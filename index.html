@@ -87,6 +87,7 @@ h1 em{font-style:normal;color:var(--sun)}
 #mRutina{background:var(--sun)}
 #mLibre{background:var(--mint)}
 #mPeque{background:var(--sky)}
+#mFrutas{background:var(--coral)}
 .field{display:flex;flex-direction:column;gap:6px;font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
 .field input{font:800 20px var(--font-body);padding:12px 14px;border-radius:14px;border:2px solid rgba(255,246,220,.4);
   background:var(--panel);color:var(--cream);width:min(100%,320px);text-transform:none;letter-spacing:0}
@@ -151,6 +152,11 @@ td:last-child{text-align:right;font-weight:800}
         <span class="tag">Toda la familia · 75 segundos</span>
         <strong>Burbujas libres</strong>
         <small>Hasta tres personas a la vez. Solo hay que tocar las burbujas con las manos.</small>
+      </button>
+      <button class="mode" id="mFrutas" type="button">
+        <span class="tag">Toda la familia · 60 segundos</span>
+        <strong>Corta frutas</strong>
+        <small>Las frutas saltan desde abajo. Pásales la mano por encima y se parten en dos.</small>
       </button>
       <button class="mode" id="mPeque" type="button">
         <span class="tag">Para los más chiquitos · sin reloj</span>
@@ -219,7 +225,13 @@ const ITEMS = [
   { e: '🚜', es: 'Tractor', en: 'Tractor', fx: 'horn' },  { e: '🚁', es: 'Helicóptero', en: 'Helicopter', fx: 'siren' },
 ];
 const MEL_K = [392, 0, 440, 0, 523, 0, 440, 0, 392, 0, 330, 0, 392, 0, 0, 0];
-const LISTS = { rutina: RUTINA, libre: LIBRE, peque: PEQUE };
+const FRUTAS = [{ id: 'frutas', name: 'Corta las frutas', tip: 'Pásales la mano por encima', secs: 60, libre: true }];
+const LISTS = { rutina: RUTINA, libre: LIBRE, peque: PEQUE, frutas: FRUTAS };
+const FRUITS = [
+  { e: '🍉', c: '#ff5d73' }, { e: '🍊', c: '#ff9f1c' }, { e: '🍎', c: '#e63946' }, { e: '🍌', c: '#ffd60a' },
+  { e: '🍓', c: '#ff4d6d' }, { e: '🍍', c: '#ffc93c' }, { e: '🥝', c: '#80b918' }, { e: '🍇', c: '#9d4edd' },
+];
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 const PRAISE = ['¡Bravo!', '¡Muy bien!', '¡Eso!', '¡Súper!', '¡Otra más!'];
 const MEL = [523, 0, 659, 0, 784, 0, 659, 0, 587, 0, 698, 0, 880, 0, 698, 0];
 const BASS = [131, 131, 175, 196];
@@ -229,7 +241,7 @@ let landmarker = null, camReady = false, lastVideoT = -1, poses = [];
 let sound = true, actx = null;
 const base = { hip: null, torso: 1 };
 const G = { mode: null, list: RUTINA, phase: 'menu', t0: 0, idx: 0, score: 0, combo: 0, lastRep: 0, reps: [], st: {},
-            bubbles: [], parts: [], floats: [], flash: 0, okSince: 0 };
+            bubbles: [], parts: [], floats: [], conf: [], fruits: [], halves: [], trail: {}, flash: 0, okSince: 0 };
 
 /* ---------- utilidades ---------- */
 function fit() {
@@ -365,7 +377,7 @@ async function start(mode) {
   const name = $('playerName').value.trim() || 'Jugador';
   try { localStorage.setItem('retoencasa.player', name); } catch (e) {}
   Object.assign(G, { mode, player: name, list: LISTS[mode], idx: 0, score: 0, combo: 0, lastRep: 0,
-                     st: {}, bubbles: [], parts: [], floats: [], conf: [], okSince: 0 });
+                     st: {}, bubbles: [], parts: [], floats: [], conf: [], fruits: [], halves: [], trail: {}, okSince: 0 });
   $('btnQuit').textContent = mode === 'peque' ? 'Terminar' : 'Salir';
   music.start(mode === 'peque');
   G.reps = G.list.map(() => 0);
@@ -376,14 +388,14 @@ async function start(mode) {
 }
 function beginStation() {
   const s = G.list[G.idx];
-  G.st = {}; G.bubbles = [];
+  G.st = {}; G.bubbles = []; G.fruits = []; G.trail = {};
   $('skip').classList.remove('on'); setPrompt(''); setBig('');
   say(s.name); beep(880, 0.15);
   hud(true); go('play');
 }
 function endStation() {
   beep(660, 0.12); beep(990, 0.2);
-  G.bubbles = []; G.st = {};
+  G.bubbles = []; G.fruits = []; G.trail = {}; G.st = {};
   if (G.idx + 1 < G.list.length) { G.idx++; hud(true); go('rest'); }
   else finish();
 }
@@ -475,7 +487,44 @@ function newBubble(now, P, s) {
            item: s.peque ? ITEMS[Math.floor(Math.random() * ITEMS.length)] : null,
            c: BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)] };
 }
+function newFruit() {
+  const r = clamp(Math.min(W, H) * 0.075, 36, 84), g = H;
+  const x = rnd(W * 0.15, W * 0.85), peak = rnd(0.5, 0.78) * H;
+  const f = FRUITS[Math.floor(Math.random() * FRUITS.length)];
+  return { x, y: H + r, vx: (W / 2 - x) * rnd(0.1, 0.5), vy: -Math.sqrt(2 * g * peak), r, rot: 0, spin: rnd(-2.5, 2.5), e: f.e, c: f.c };
+}
+function slice(f, now) {
+  for (const side of [-1, 1]) G.halves.push({ x: f.x, y: f.y, vx: f.vx + side * rnd(140, 220), vy: Math.min(f.vy, 0) - 140,
+    rot: f.rot, spin: side * rnd(3, 6), side, e: f.e, r: f.r, t0: now });
+  burst(f.x, f.y, f.c, 20);
+  tone(1100, 0.07, 'sawtooth', 0.07);
+}
 const RUN = {
+  frutas(now, P, s) {
+    const st = G.st, dt = Math.min(0.05, (now - (st.last || now)) / 1000); st.last = now;
+    if (now > (st.next || 0)) {
+      const n = Math.random() < 0.3 ? 2 : 1;
+      for (let i = 0; i < n; i++) G.fruits.push(newFruit());
+      st.next = now + rnd(650, 1100);
+    }
+    for (const f of G.fruits) { f.vy += H * dt; f.x += f.vx * dt; f.y += f.vy * dt; f.rot += f.spin * dt; }
+    poses.forEach((pose, pi) => {
+      for (const i of [15, 16]) {
+        const h = pose[i], key = pi + '-' + i;
+        const tr = (G.trail[key] || []).filter(q => now - q.t < 220);
+        if (h.v >= 0.4) tr.push({ x: h.x, y: h.y, t: now });
+        G.trail[key] = tr;
+      }
+      for (const i of [15, 16, 19, 20]) {
+        const h = pose[i]; if (h.v < 0.4) continue;
+        for (const f of G.fruits) {
+          if (f.dead || Math.hypot(h.x - f.x, h.y - f.y) > f.r + 16) continue;
+          f.dead = true; slice(f, now); rep(f.x, f.y);
+        }
+      }
+    });
+    G.fruits = G.fruits.filter(f => !f.dead && f.y < H + f.r * 2 + 10);
+  },
   burbujas(now, P, s) {
     const max = s.peque ? 4 : s.libre ? 5 : 3, life = s.peque ? 15000 : s.libre ? 7000 : 3000, pad = s.peque ? 40 : 14;
     G.bubbles = G.bubbles.filter(b => !b.dead && now - b.born < life);
@@ -626,6 +675,34 @@ function render(now) {
     }
   }
 
+  // frutas: estela de las manos, frutas enteras y mitades
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (G.fruits.length || G.halves.length) {
+    ctx.strokeStyle = 'rgba(255,246,220,.75)'; ctx.lineWidth = 9; ctx.lineJoin = 'round';
+    for (const key in G.trail) {
+      const tr = G.trail[key]; if (tr.length < 2) continue;
+      ctx.beginPath(); ctx.moveTo(tr[0].x, tr[0].y);
+      for (const q of tr) ctx.lineTo(q.x, q.y);
+      ctx.stroke();
+    }
+    for (const f of G.fruits) {
+      ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.rot);
+      ctx.font = `${Math.round(f.r * 2)}px ${EMOJI_FONT}`; ctx.fillStyle = C.night;
+      ctx.fillText(f.e, 0, f.r * 0.1); ctx.restore();
+    }
+    G.halves = G.halves.filter(h => now - h.t0 < 1200);
+    for (const h of G.halves) {
+      const t = (now - h.t0) / 1000, R = h.r * 1.5;
+      ctx.save();
+      ctx.translate(h.x + h.vx * t, h.y + h.vy * t + 0.5 * H * t * t); ctx.rotate(h.rot + h.spin * t);
+      ctx.beginPath(); ctx.rect(h.side < 0 ? -R : 0, -R, R, R * 2); ctx.clip();
+      ctx.globalAlpha = 1 - t / 1.2;
+      ctx.font = `${Math.round(h.r * 2)}px ${EMOJI_FONT}`; ctx.fillStyle = C.night;
+      ctx.fillText(h.e, 0, h.r * 0.1); ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   // burbujas
   for (const b of G.bubbles) {
     const age = now - b.born, grow = Math.min(1, age / 250), wob = Math.sin(age / 260) * 4;
@@ -701,6 +778,7 @@ $('mLibre').addEventListener('click', () => start('libre'));
 $('btnAgain').addEventListener('click', () => start(G.mode));
 $('btnMenu').addEventListener('click', quit);
 $('mPeque').addEventListener('click', () => start('peque'));
+$('mFrutas').addEventListener('click', () => start('frutas'));
 function party() {
   G.bubbles = []; G.conf = [];
   const name = G.player && G.player !== 'Jugador' ? G.player : '';
