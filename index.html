@@ -89,6 +89,8 @@ h1 em{font-style:normal;color:var(--sun)}
 #mPeque{background:var(--sky)}
 #mFrutas{background:var(--coral)}
 #mTelas{background:var(--cream)}
+#mVolante{background:#ff9f1c}
+#mLavado{background:#b8f2e6}
 .field{display:flex;flex-direction:column;gap:6px;font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
 .field input{font:800 20px var(--font-body);padding:12px 14px;border-radius:14px;border:2px solid rgba(255,246,220,.4);
   background:var(--panel);color:var(--cream);width:min(100%,320px);text-transform:none;letter-spacing:0}
@@ -164,6 +166,16 @@ td:last-child{text-align:right;font-weight:800}
         <strong>Telarañas</strong>
         <small>Estira el brazo y lanzas una telaraña a la pantalla. Cuando esté llena, aplaude y se limpia todo.</small>
       </button>
+      <button class="mode" id="mVolante" type="button">
+        <span class="tag">1 jugador · 60 segundos</span>
+        <strong>Maneja</strong>
+        <small>Agarra un volante imaginario y gíralo. Esquiva los conos y recoge las estrellas.</small>
+      </button>
+      <button class="mode" id="mLavado" type="button">
+        <span class="tag">Toda la familia · sin reloj</span>
+        <strong>Lavadero</strong>
+        <small>Llega un carro lleno de lodo. Pasa las manos como esponjas hasta que quede limpio y salga pitando.</small>
+      </button>
       <button class="mode" id="mPeque" type="button">
         <span class="tag">Para los más chiquitos · sin reloj</span>
         <strong>Modo peque</strong>
@@ -233,7 +245,10 @@ const ITEMS = [
 const MEL_K = [392, 0, 440, 0, 523, 0, 440, 0, 392, 0, 330, 0, 392, 0, 0, 0];
 const FRUTAS = [{ id: 'frutas', name: 'Corta las frutas', tip: 'Pásales la mano por encima', secs: 60, libre: true }];
 const TELAS = [{ id: 'telas', name: 'Telarañas', tip: 'Estira el brazo para lanzar. Aplaude para limpiar', secs: Infinity, libre: true }];
-const LISTS = { rutina: RUTINA, libre: LIBRE, peque: PEQUE, frutas: FRUTAS, telas: TELAS };
+const VOLANTE = [{ id: 'volante', name: 'Maneja', tip: 'Agarra un volante imaginario y gíralo', secs: 60, libre: true }];
+const LAVADO = [{ id: 'lavado', name: 'Lavadero', tip: 'Pasa las manos para limpiar el carro', secs: Infinity, libre: true }];
+const LISTS = { rutina: RUTINA, libre: LIBRE, peque: PEQUE, frutas: FRUTAS, telas: TELAS, volante: VOLANTE, lavado: LAVADO };
+const CAR_COLORS = ['#ff5d73', '#ffc93c', '#3ddc97', '#4cc9f0', '#ff9f1c'];
 const FRUITS = [
   { e: '🍉', c: '#ff5d73' }, { e: '🍊', c: '#ff9f1c' }, { e: '🍎', c: '#e63946' }, { e: '🍌', c: '#ffd60a' },
   { e: '🍓', c: '#ff4d6d' }, { e: '🍍', c: '#ffc93c' }, { e: '🥝', c: '#80b918' }, { e: '🍇', c: '#9d4edd' },
@@ -379,7 +394,7 @@ async function start(mode) {
     await initCamera();
     setStatus('Cargando el detector de movimiento…');
     await initModel();
-    await landmarker.setOptions({ numPoses: mode === 'rutina' ? 1 : 3 });
+    await landmarker.setOptions({ numPoses: mode === 'rutina' || mode === 'volante' ? 1 : 3 });
   } catch (err) { console.error(err); setStatus(explain(err), true); return; }
   setStatus('');
   const name = $('playerName').value.trim() || 'Jugador';
@@ -527,7 +542,73 @@ function clearWebs(now) {
   [900, 700, 500, 350].forEach((f, i) => setTimeout(() => tone(f, 0.1, 'sine', 0.12), i * 70));
   sayParts([['¡Limpio!', 'es-US']]);
 }
+const roadEdges = () => ({ L: W * 0.2, R: W * 0.8, cw: clamp(W * 0.07, 50, 90), carY: H * 0.78 });
+const washGeom = () => { const cw = Math.min(W * 0.62, H * 1.1); return { cw, ch: cw * 0.42, cy: H * 0.56 }; };
+function newCar(now) {
+  const spots = [];
+  while (spots.length < 24) {
+    const u = rnd(-0.44, 0.44), v = rnd(-0.38, 0.3);
+    if (v < -0.08 && Math.abs(u) > 0.2) continue; // arriba solo hay cabina en el centro
+    spots.push({ u, v, r: rnd(0.035, 0.06), k: rnd(0, 6) });
+  }
+  return { c: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)], phase: 'in', t0: now, spots };
+}
 const RUN = {
+  volante(now, P, s) {
+    const st = G.st, dt = Math.min(0.05, (now - (st.last || now)) / 1000); st.last = now;
+    const { L, R, cw, carY } = roadEdges(), ch = cw * 1.75;
+    if (st.x == null) Object.assign(st, { x: W / 2, tilt: 0, off: 0, objs: [], next: now + 1200 });
+    setPrompt(now - G.t0 < 6000 ? s.tip : '');
+    let steering = false;
+    if (P) {
+      const a = P.p[15], b = P.p[16];
+      if (a.v > 0.4 && b.v > 0.4) {
+        const lh = a.x < b.x ? a : b, rh = a.x < b.x ? b : a, dx = rh.x - lh.x;
+        if (dx > P.m.torso * 0.25) { st.tilt += (clamp(Math.atan2(rh.y - lh.y, dx), -0.9, 0.9) - st.tilt) * 0.3; steering = true; }
+      }
+    }
+    if (!steering) st.tilt *= 0.9;
+    st.x = clamp(st.x + st.tilt * W * 0.9 * dt, L + cw / 2, R - cw / 2);
+    const speed = H * (0.35 + 0.3 * Math.min(1, (now - G.t0) / 1000 / s.secs));
+    st.off = (st.off + speed * dt) % 80;
+    if (now > st.next) { st.objs.push({ x: rnd(L + 34, R - 34), y: -40, star: Math.random() < 0.45 }); st.next = now + rnd(550, 950); }
+    for (const o of st.objs) {
+      o.y += speed * dt;
+      if (!o.dead && Math.abs(o.x - st.x) < cw / 2 + 22 && Math.abs(o.y - carY) < ch / 2 + 20) {
+        o.dead = true;
+        if (o.star) { burst(o.x, o.y, C.sun, 12); rep(o.x, o.y - 30, 15); } else { burst(o.x, o.y, '#ff9f1c', 10); miss(); }
+      }
+    }
+    st.objs = st.objs.filter(o => !o.dead && o.y < H + 60);
+  },
+  lavado(now, P, s) {
+    const st = G.st, g = washGeom();
+    setPrompt(now - G.t0 < 7000 ? s.tip : '');
+    if (!st.car) st.car = newCar(now);
+    const car = st.car, t = now - car.t0;
+    // las manos se miden respecto a los hombros: alcanzan toda la pantalla aunque seas chiquito o estés lejos
+    st.hands = [];
+    for (const p of poses) {
+      const m = metrics(p); if (!m.ok) continue;
+      for (const i of [15, 16]) {
+        const h = p[i]; if (h.v < 0.4) continue;
+        st.hands.push({ x: W / 2 + clamp((h.x - m.sh.x) / (1.3 * m.torso), -1, 1) * (W / 2 - 20),
+                        y: H * 0.55 + clamp((h.y - m.sh.y) / (1.1 * m.torso), -1, 1) * (H * 0.45 - 20) });
+      }
+    }
+    if (car.phase === 'in') { if (t > 700) { car.phase = 'wash'; car.t0 = now; } return; }
+    if (car.phase === 'out') { if (t > 1600) st.car = newCar(now); return; }
+    for (const h of st.hands) for (const sp of car.spots) {
+      if (sp.dead) continue;
+      const x = W / 2 + sp.u * g.cw, y = g.cy + sp.v * g.ch;
+      if (Math.hypot(h.x - x, h.y - y) < sp.r * g.cw + 34) { sp.dead = true; burst(x, y, '#ffffff', 8); rep(x, y, 5); }
+    }
+    car.spots = car.spots.filter(sp => !sp.dead);
+    if (!car.spots.length) {
+      car.phase = 'out'; car.t0 = now; fx('horn');
+      sayParts([['¡Quedó limpio!', 'es-US'], [praise(), 'es-US']]);
+    }
+  },
   telas(now, P, s) {
     const st = G.st; st.h = st.h || {};
     setPrompt(now - G.t0 < 7000 ? s.tip : '');
@@ -726,6 +807,11 @@ function render(now) {
     }
   }
 
+  // carretera y lavadero
+  const cur = G.list[G.idx];
+  if (G.phase === 'play' && cur.id === 'volante' && G.st.x != null) drawRoad();
+  if (G.phase === 'play' && cur.id === 'lavado' && G.st.car) drawWash(now);
+
   // telarañas
   if (G.webs.length || G.strands.length) {
     G.webs = G.webs.filter(w => !w.gone || now - w.gone < 500);
@@ -843,6 +929,88 @@ function render(now) {
   if (fl < 350) { ctx.fillStyle = `rgba(255,93,115,${0.45 * (1 - fl / 350)})`; ctx.fillRect(0, 0, W, H); }
 }
 
+function roundPath(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function drawRoad() {
+  const st = G.st, { L, R, cw, carY } = roadEdges(), ch = cw * 1.75;
+  ctx.fillStyle = 'rgba(20,24,38,.62)'; ctx.fillRect(L, 0, R - L, H);
+  ctx.strokeStyle = C.cream; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(L, 0); ctx.lineTo(L, H); ctx.moveTo(R, 0); ctx.lineTo(R, H); ctx.stroke();
+  ctx.setLineDash([40, 40]); ctx.lineDashOffset = -st.off; ctx.lineWidth = 5; ctx.globalAlpha = 0.7;
+  for (const f of [1 / 3, 2 / 3]) { const x = L + (R - L) * f; ctx.beginPath(); ctx.moveTo(x, -80); ctx.lineTo(x, H); ctx.stroke(); }
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const o of st.objs) {
+    if (o.star) { ctx.font = `44px ${EMOJI_FONT}`; ctx.fillStyle = C.night; ctx.fillText('⭐', o.x, o.y); }
+    else {
+      ctx.fillStyle = '#ff9f1c'; ctx.beginPath(); ctx.moveTo(o.x, o.y - 26); ctx.lineTo(o.x + 20, o.y + 20); ctx.lineTo(o.x - 20, o.y + 20); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = C.cream; ctx.fillRect(o.x - 11, o.y - 2, 22, 7);
+      ctx.fillStyle = '#ff9f1c'; ctx.fillRect(o.x - 26, o.y + 20, 52, 7);
+    }
+  }
+  // carro visto desde arriba
+  ctx.save(); ctx.translate(st.x, carY); ctx.rotate(st.tilt * 0.35);
+  ctx.fillStyle = '#10131f';
+  for (const [wx, wy] of [[-1, -0.3], [1, -0.3], [-1, 0.3], [1, 0.3]]) ctx.fillRect(wx * cw / 2 - cw * 0.08, wy * ch - ch * 0.1, cw * 0.16, ch * 0.2);
+  ctx.fillStyle = C.coral; roundPath(-cw / 2, -ch / 2, cw, ch, cw * 0.28); ctx.fill();
+  ctx.fillStyle = C.sky; roundPath(-cw * 0.36, -ch * 0.24, cw * 0.72, ch * 0.2, 6); ctx.fill();
+  ctx.globalAlpha = 0.8; roundPath(-cw * 0.34, ch * 0.2, cw * 0.68, ch * 0.13, 6); ctx.fill(); ctx.globalAlpha = 1;
+  ctx.fillStyle = C.sun;
+  for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(sx * cw * 0.3, -ch * 0.44, cw * 0.08, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+  // volante indicador
+  ctx.save(); ctx.translate(L / 2, H - 90); ctx.rotate(st.tilt);
+  ctx.strokeStyle = C.cream; ctx.lineWidth = 9; ctx.beginPath(); ctx.arc(0, 0, 46, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(-46, 0); ctx.lineTo(46, 0); ctx.moveTo(0, 0); ctx.lineTo(0, 46); ctx.stroke();
+  ctx.restore();
+}
+function drawWash(now) {
+  const st = G.st, car = st.car, { cw, ch, cy } = washGeom(), t = now - car.t0;
+  let ox = 0;
+  if (car.phase === 'in') { const k = Math.min(1, t / 700); ox = -W * (1 - k) * (1 - k); }
+  else if (car.phase === 'out' && t > 600) { const k = Math.min(1, (t - 600) / 900); ox = W * 1.2 * k * k; }
+  const cx = W / 2 + ox;
+  ctx.fillStyle = 'rgba(11,23,48,.35)'; ctx.beginPath(); ctx.ellipse(cx, cy + ch * 0.55, cw * 0.5, ch * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+  // cabina y ventanas
+  ctx.fillStyle = car.c; ctx.beginPath();
+  ctx.moveTo(cx - cw * 0.3, cy - ch * 0.04); ctx.lineTo(cx - cw * 0.18, cy - ch * 0.5); ctx.lineTo(cx + cw * 0.14, cy - ch * 0.5); ctx.lineTo(cx + cw * 0.3, cy - ch * 0.04);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#d7f3ff'; ctx.beginPath();
+  ctx.moveTo(cx - cw * 0.24, cy - ch * 0.08); ctx.lineTo(cx - cw * 0.15, cy - ch * 0.42); ctx.lineTo(cx - cw * 0.02, cy - ch * 0.42); ctx.lineTo(cx - cw * 0.02, cy - ch * 0.08);
+  ctx.closePath(); ctx.fill(); ctx.beginPath();
+  ctx.moveTo(cx + cw * 0.02, cy - ch * 0.08); ctx.lineTo(cx + cw * 0.02, cy - ch * 0.42); ctx.lineTo(cx + cw * 0.12, cy - ch * 0.42); ctx.lineTo(cx + cw * 0.23, cy - ch * 0.08);
+  ctx.closePath(); ctx.fill();
+  // carrocería, faro y ruedas
+  ctx.fillStyle = car.c; roundPath(cx - cw / 2, cy - ch * 0.08, cw, ch * 0.42, ch * 0.16); ctx.fill();
+  ctx.fillStyle = C.sun; ctx.beginPath(); ctx.arc(cx + cw * 0.46, cy + ch * 0.06, ch * 0.06, 0, Math.PI * 2); ctx.fill();
+  for (const sx of [-0.3, 0.3]) {
+    ctx.fillStyle = '#10131f'; ctx.beginPath(); ctx.arc(cx + cw * sx, cy + ch * 0.36, ch * 0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.cream; ctx.beginPath(); ctx.arc(cx + cw * sx, cy + ch * 0.36, ch * 0.09, 0, Math.PI * 2); ctx.fill();
+  }
+  // lodo
+  ctx.fillStyle = 'rgba(107,68,35,.94)';
+  for (const sp of car.spots) {
+    const x = cx + sp.u * cw, y = cy + sp.v * ch, r = sp.r * cw;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.arc(x + Math.cos(sp.k) * r * 0.7, y + Math.sin(sp.k) * r * 0.7, r * 0.6, 0, Math.PI * 2);
+    ctx.arc(x - Math.cos(sp.k * 2) * r * 0.6, y + Math.sin(sp.k * 2) * r * 0.5, r * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (car.phase === 'out') {
+    ctx.font = `${Math.round(ch * 0.3)}px ${EMOJI_FONT}`; ctx.fillStyle = C.night;
+    for (const [u, v] of [[-0.35, -0.3], [0.05, -0.62], [0.4, -0.2], [-0.1, 0.1]]) {
+      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(now / 90 + u * 9); ctx.fillText('✨', cx + u * cw, cy + v * ch);
+    }
+    ctx.globalAlpha = 1;
+  }
+  // esponjas
+  ctx.font = `60px ${EMOJI_FONT}`; ctx.fillStyle = C.night;
+  for (const h of st.hands || []) ctx.fillText('🧽', h.x, h.y);
+}
 function frame(now) {
   requestAnimationFrame(frame);
   if (cv.clientWidth !== W || cv.clientHeight !== H) { fit(); calcT(); }
@@ -863,6 +1031,8 @@ $('btnMenu').addEventListener('click', quit);
 $('mPeque').addEventListener('click', () => start('peque'));
 $('mFrutas').addEventListener('click', () => start('frutas'));
 $('mTelas').addEventListener('click', () => start('telas'));
+$('mVolante').addEventListener('click', () => start('volante'));
+$('mLavado').addEventListener('click', () => start('lavado'));
 function party() {
   G.bubbles = []; G.conf = [];
   const name = G.player && G.player !== 'Jugador' ? G.player : '';
