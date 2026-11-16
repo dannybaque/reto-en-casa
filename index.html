@@ -89,6 +89,10 @@ h1 em{font-style:normal;color:var(--sun)}
 #mPeque{background:var(--sky)}
 #mFrutas{background:var(--coral)}
 #mTelas{background:var(--cream)}
+.mode .ico{font-size:46px;line-height:1}
+#mTele{font-size:clamp(20px,3vw,28px);padding:20px 26px;border-radius:22px;text-align:left;display:flex;flex-direction:column;gap:4px;width:100%}
+#mTele small{font:600 15px var(--font-body)}
+#endAuto{margin:0;font-weight:800;color:var(--sky);min-height:1.4em}
 .field{display:flex;flex-direction:column;gap:6px;font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
 .field input{font:800 20px var(--font-body);padding:12px 14px;border-radius:14px;border:2px solid rgba(255,246,220,.4);
   background:var(--panel);color:var(--cream);width:min(100%,320px);text-transform:none;letter-spacing:0}
@@ -143,28 +147,36 @@ td:last-child{text-align:right;font-weight:800}
     <label class="field" for="playerName">¿Quién juega?
       <input id="playerName" type="text" maxlength="14" placeholder="Tu nombre" autocomplete="off">
     </label>
+    <button class="cta" id="mTele" type="button">Jugar desde la tele
+      <small>Deja el teléfono apoyado y elige cada juego levantando la mano, sin tocar la pantalla.</small>
+    </button>
     <div class="modes">
       <button class="mode" id="mRutina" type="button">
+        <span class="ico" aria-hidden="true">🏃</span>
         <span class="tag">1 jugador · 3 minutos</span>
         <strong>Rutina completa</strong>
         <small>Seis retos seguidos: burbujas, saltos, muro, sentadillas, rodillas arriba y manos al cielo.</small>
       </button>
       <button class="mode" id="mLibre" type="button">
+        <span class="ico" aria-hidden="true">🎈</span>
         <span class="tag">Toda la familia · 75 segundos</span>
         <strong>Burbujas libres</strong>
         <small>Hasta tres personas a la vez. Solo hay que tocar las burbujas con las manos.</small>
       </button>
       <button class="mode" id="mFrutas" type="button">
+        <span class="ico" aria-hidden="true">🍉</span>
         <span class="tag">Toda la familia · 60 segundos</span>
         <strong>Corta frutas</strong>
         <small>Las frutas saltan desde abajo. Pásales la mano por encima y se parten en dos.</small>
       </button>
       <button class="mode" id="mTelas" type="button">
+        <span class="ico" aria-hidden="true">🕸️</span>
         <span class="tag">Toda la familia · sin reloj</span>
         <strong>Telarañas</strong>
         <small>Estira el brazo y lanzas una telaraña a la pantalla. Cuando esté llena, aplaude y se limpia todo.</small>
       </button>
       <button class="mode" id="mPeque" type="button">
+        <span class="ico" aria-hidden="true">🐶</span>
         <span class="tag">Para los más chiquitos · sin reloj</span>
         <strong>Modo peque</strong>
         <small>Animalitos y vehículos grandes y lentos. La voz dice cada uno en español y en inglés. Se acaba con el botón Terminar.</small>
@@ -189,6 +201,7 @@ td:last-child{text-align:right;font-weight:800}
     <h1 id="endTitle">¡Reto cumplido!</h1>
     <div id="endScore">0</div>
     <p id="endBest"></p>
+    <p id="endAuto" role="status"></p>
     <div class="tables">
       <section><h2>Tu partida</h2><table id="endTable"></table></section>
       <section id="boardBox"><h2>Récords de la familia</h2><table id="endBoard"></table></section>
@@ -245,7 +258,16 @@ const BASS = [131, 131, 175, 196];
 
 let W = 0, H = 0, dpr = 1, T = { ox: 0, oy: 0, dw: 1, dh: 1 };
 let landmarker = null, camReady = false, lastVideoT = -1, poses = [];
-let sound = true, actx = null;
+let sound = true, actx = null, handsFree = false;
+const TILES = [
+  { mode: 'rutina', label: 'Rutina', icon: '🏃', c: C.sun },
+  { mode: 'frutas', label: 'Frutas', icon: '🍉', c: C.coral },
+  { mode: 'telas', label: 'Telarañas', icon: '🕸️', c: C.cream },
+  { mode: 'libre', label: 'Burbujas', icon: '🎈', c: C.mint },
+  { mode: 'peque', label: 'Peque', icon: '🐶', c: C.sky },
+  { mode: null, label: 'Inicio', icon: '🏠', c: '#9fb3d9' },
+];
+const DWELL = 1500;
 const base = { hip: null, torso: 1 };
 const G = { mode: null, list: RUTINA, phase: 'menu', t0: 0, idx: 0, score: 0, combo: 0, lastRep: 0, reps: [], st: {},
             bubbles: [], parts: [], floats: [], conf: [], fruits: [], halves: [], trail: {}, webs: [], strands: [],
@@ -372,6 +394,7 @@ function go(phase) { G.phase = phase; G.t0 = performance.now(); }
 
 async function start(mode) {
   try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch (e) {}
+  G.endAuto = 0;
   say('¡Vamos!'); // en iPhone la voz solo se desbloquea dentro de un toque
   keepAwake(true);
   setStatus('Encendiendo la cámara…');
@@ -409,7 +432,8 @@ function endStation() {
 }
 function finish() {
   go('end'); $('hud').classList.remove('on'); setPrompt(''); setBig('');
-  music.stop(); keepAwake(false);
+  music.stop(); keepAwake(handsFree);
+  G.endAuto = handsFree ? performance.now() + 10000 : 0; $('endAuto').textContent = '';
   const peque = G.mode === 'peque';
   const key = 'retoencasa.board.' + G.mode;
   let board = [];
@@ -437,7 +461,36 @@ function finish() {
   say(peque ? `¡Atrapaste ${G.reps[0]}!` : `${G.player}, terminaste con ${G.score} puntos`);
   show('end');
 }
+function tileRects() {
+  const top = 64, bottom = 44, pad = 14, cols = 3, rows = 2;
+  const w = (W - pad * (cols + 1)) / cols, h = (H - top - bottom - pad * (rows - 1)) / rows;
+  return TILES.map((t, i) => ({ x: pad + (i % cols) * (w + pad), y: top + Math.floor(i / cols) * (h + pad), w, h }));
+}
+async function enterPick() {
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch (e) {}
+  keepAwake(true);
+  if (!camReady || !landmarker) setStatus('Encendiendo la cámara…');
+  try {
+    await initCamera();
+    if (!landmarker) setStatus('Cargando el detector de movimiento…');
+    await initModel();
+    await landmarker.setOptions({ numPoses: 1 });
+  } catch (err) { console.error(err); setStatus(explain(err), true); return; }
+  setStatus(''); music.stop(); handsFree = true;
+  Object.assign(G, { bubbles: [], fruits: [], halves: [], webs: [], strands: [], conf: [], trail: {}, floats: [], parts: [],
+                     pick: { x: null, y: null, hover: -1, t0: 0 }, exitT0: 0, endAuto: 0 });
+  show(null); $('hud').classList.remove('on'); $('skip').classList.remove('on'); setPrompt(''); setBig('');
+  fit(); calcT(); go('pick');
+  say('Elige un juego con la mano');
+}
+function choose(tile) {
+  beep(880, 0.15);
+  if (tile.mode) start(tile.mode);
+  else { handsFree = false; quit(); }
+}
 function quit() {
+  if (handsFree && G.phase !== 'pick') { enterPick(); return; }
+  handsFree = false;
   music.stop(); keepAwake(false);
   go('menu'); $('hud').classList.remove('on'); $('skip').classList.remove('on'); setPrompt(''); setBig('');
   try { speechSynthesis.cancel(); } catch (e) {}
@@ -641,7 +694,37 @@ function update(now) {
   const P = player();
   if (P) updateBase(P.m);
   if (G.combo && now - G.lastRep > 3500) G.combo = 0;
+  if (handsFree && (G.phase === 'play' || G.phase === 'calib' || G.phase === 'rest')) {
+    // salir sin tocar el teléfono: manos juntas sobre la cabeza
+    let ex = false;
+    if (P && P.m.ok) {
+      const l = P.p[15], r = P.p[16], top = P.m.nose.y - 0.2 * P.m.torso;
+      ex = l.v > 0.5 && r.v > 0.5 && l.y < top && r.y < top && Math.hypot(l.x - r.x, l.y - r.y) < 0.5 * P.m.torso;
+    }
+    if (!ex) G.exitT0 = 0;
+    else if (!G.exitT0) G.exitT0 = now;
+    else if (now - G.exitT0 > DWELL) {
+      G.exitT0 = 0;
+      if (G.mode === 'peque' && G.phase === 'play') party(); else quit();
+      return;
+    }
+  }
   switch (G.phase) {
+    case 'pick': {
+      const pk = G.pick; let w = null;
+      if (P && P.m.ok) for (const h of [P.p[15], P.p[16]]) if (h.v > 0.5 && h.y < P.m.hip.y && (!w || h.y < w.y)) w = h;
+      if (!w) { pk.x = null; pk.hover = -1; break; }
+      // el brazo recorre toda la pantalla aunque estés lejos: se mide respecto a tus hombros
+      const t = P.m.torso;
+      const tx = W / 2 + clamp((w.x - P.m.sh.x) / (1.2 * t), -1, 1) * (W / 2 - 30);
+      const ty = H / 2 + clamp((w.y - (P.m.sh.y - 0.2 * t)) / t, -1, 1) * (H / 2 - 30);
+      pk.x = pk.x == null ? tx : pk.x + (tx - pk.x) * 0.35;
+      pk.y = pk.y == null ? ty : pk.y + (ty - pk.y) * 0.35;
+      const i = tileRects().findIndex(r => pk.x >= r.x && pk.x <= r.x + r.w && pk.y >= r.y && pk.y <= r.y + r.h);
+      if (i !== pk.hover) { pk.hover = i; pk.t0 = now; if (i >= 0) tone(520, 0.05, 'sine', 0.08); }
+      else if (i >= 0 && now - pk.t0 > DWELL) { pk.hover = -1; pk.x = null; choose(TILES[i]); return; }
+      break;
+    }
     case 'calib': {
       const ok = !!P && P.m.ok && (G.mode !== 'rutina' || P.m.legs);
       if (ok) { if (!G.okSince) G.okSince = now; if (now - G.okSince > 900) go('count'); } else G.okSince = 0;
@@ -841,6 +924,52 @@ function render(now) {
   // destello de fallo
   const fl = now - G.flash;
   if (fl < 350) { ctx.fillStyle = `rgba(255,93,115,${0.45 * (1 - fl / 350)})`; ctx.fillRect(0, 0, W, H); }
+
+  if (G.phase === 'pick') drawPick(now);
+  else if (G.exitT0) {
+    const k = clamp((now - G.exitT0) / DWELL, 0, 1);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(11,23,48,.8)'; ctx.beginPath(); ctx.arc(W / 2, H * 0.3, 70, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = C.sun; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(W / 2, H * 0.3, 60, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = C.cream; ctx.font = '800 22px "Baloo 2", sans-serif'; ctx.fillText('Salir', W / 2, H * 0.3);
+  }
+}
+function rr(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function drawPick(now) {
+  const pk = G.pick, rects = tileRects();
+  ctx.fillStyle = 'rgba(11,23,48,.5)'; ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = C.cream; ctx.font = `800 ${Math.round(clamp(H * 0.06, 20, 40))}px "Baloo 2", sans-serif`;
+  ctx.fillText('Levanta una mano y déjala sobre un juego', W / 2, 34);
+  ctx.font = `600 ${Math.round(clamp(H * 0.035, 13, 20))}px "Nunito", sans-serif`;
+  ctx.fillText('Para salir de un juego: junta las manos sobre la cabeza', W / 2, H - 22);
+  rects.forEach((r, i) => {
+    const t = TILES[i], hot = pk.hover === i;
+    ctx.globalAlpha = hot ? 1 : 0.85; ctx.fillStyle = t.c; rr(r.x, r.y, r.w, r.h, 24); ctx.fill();
+    ctx.globalAlpha = 1;
+    if (hot) {
+      ctx.lineWidth = 8; ctx.strokeStyle = C.night; ctx.stroke();
+      const k = clamp((now - pk.t0) / DWELL, 0, 1);
+      ctx.fillStyle = C.night; rr(r.x + 18, r.y + r.h - 28, Math.max(12, (r.w - 36) * k), 12, 6); ctx.fill();
+    }
+    ctx.fillStyle = C.night;
+    ctx.font = `${Math.round(Math.min(r.h * 0.42, r.w * 0.36))}px ${EMOJI_FONT}`;
+    ctx.fillText(t.icon, r.x + r.w / 2, r.y + r.h * 0.38);
+    ctx.font = `800 ${Math.round(clamp(r.h * 0.17, 18, 54))}px "Baloo 2", sans-serif`;
+    ctx.fillText(t.label, r.x + r.w / 2, r.y + r.h * 0.74);
+  });
+  if (pk.x != null) {
+    ctx.fillStyle = C.cream; ctx.strokeStyle = C.night; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(pk.x, pk.y, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    if (pk.hover >= 0) {
+      const k = clamp((now - pk.t0) / DWELL, 0, 1);
+      ctx.strokeStyle = C.night; ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.arc(pk.x, pk.y, 32, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke();
+    }
+  }
 }
 
 function frame(now) {
@@ -852,6 +981,11 @@ function frame(now) {
     try { poses = (landmarker.detectForVideo(video, now).landmarks || []).map(p => p.map(toScreen)); } catch (e) { poses = []; }
   }
   if (live) update(now);
+  else if (G.phase === 'end' && handsFree && G.endAuto) {
+    const left = Math.ceil((G.endAuto - now) / 1000);
+    if (left <= 0) { G.endAuto = 0; $('endAuto').textContent = ''; enterPick(); }
+    else { const msg = `Volviendo al menú de la tele en ${left}…`; if ($('endAuto').textContent !== msg) $('endAuto').textContent = msg; }
+  }
   render(now);
 }
 
@@ -863,6 +997,7 @@ $('btnMenu').addEventListener('click', quit);
 $('mPeque').addEventListener('click', () => start('peque'));
 $('mFrutas').addEventListener('click', () => start('frutas'));
 $('mTelas').addEventListener('click', () => start('telas'));
+$('mTele').addEventListener('click', enterPick);
 function party() {
   G.bubbles = []; G.conf = [];
   const name = G.player && G.player !== 'Jugador' ? G.player : '';
