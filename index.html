@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Reto en Casa">
+<meta name="theme-color" content="#0b1730">
+<title>Reto en Casa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: la cámara ocupa toda la pantalla; banda de HUD arriba, aviso gigante al centro, menú y final como paneles encima. */
+  --night:#0b1730;
+  --panel:#12244a;
+  --cream:#fff6dc;
+  --sun:#ffc93c;
+  --coral:#ff5d73;
+  --mint:#3ddc97;
+  --sky:#4cc9f0;
+  --font-display:"Baloo 2","Trebuchet MS",system-ui,sans-serif;
+  --font-body:"Nunito","Segoe UI",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--night);color:var(--cream);font-family:var(--font-body);font-weight:600;overflow:hidden}
+#cam{position:absolute;width:2px;height:2px;opacity:0;pointer-events:none}
+#stage{position:absolute;inset:0;width:100%;height:100%;display:block;background:var(--night)}
+
+/* HUD */
+#hud{position:absolute;inset:0 0 auto 0;display:none;gap:16px;align-items:center;padding:14px 20px;
+  background:linear-gradient(to bottom,rgba(11,23,48,.88),rgba(11,23,48,0))}
+#hud.on{display:flex}
+#hud{padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right));padding-top:max(14px,env(safe-area-inset-top))}
+.panel{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));
+  padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom))}
+#rotate{display:none;margin:0;font-weight:800;color:var(--sun)}
+@media (orientation:portrait) and (max-width:600px){#rotate{display:block}}
+@media (max-height:480px){.stat span{display:none}#hudTip{display:none}}
+.hud-main{flex:1;min-width:0}
+#hudName{font-family:var(--font-display);font-size:clamp(22px,3.6vw,44px);line-height:1;font-weight:800}
+#hudTip{font-size:clamp(13px,1.6vw,20px);opacity:.85;margin-top:4px}
+.bar{height:10px;border-radius:99px;background:rgba(255,246,220,.18);margin-top:10px;overflow:hidden}
+#hudTime{height:100%;width:100%;background:var(--sun);border-radius:99px;transform-origin:left}
+.stat{text-align:right;font-variant-numeric:tabular-nums}
+.stat b{display:block;font-family:var(--font-display);font-size:clamp(28px,4.4vw,56px);line-height:.95;color:var(--sun)}
+.stat span{font-size:clamp(11px,1.2vw,15px);letter-spacing:.08em;text-transform:uppercase;opacity:.8}
+#hudCombo{color:var(--mint)}
+.icon-btn{appearance:none;border:2px solid rgba(255,246,220,.4);background:rgba(11,23,48,.6);color:var(--cream);
+  font:800 14px var(--font-body);border-radius:12px;padding:10px 14px;cursor:pointer}
+.icon-btn:hover{border-color:var(--cream)}
+:focus-visible{outline:3px solid var(--sky);outline-offset:3px}
+
+/* Avisos centrales */
+#big{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;
+  font-family:var(--font-display);font-weight:800;font-size:clamp(90px,26vw,340px);color:var(--sun);
+  text-shadow:0 8px 0 rgba(11,23,48,.55)}
+#prompt{position:absolute;left:50%;bottom:7%;transform:translateX(-50%);max-width:min(90%,820px);text-align:center;
+  font-family:var(--font-display);font-weight:700;font-size:clamp(20px,3.4vw,40px);line-height:1.1;text-wrap:balance;
+  background:rgba(11,23,48,.82);padding:12px 22px;border-radius:18px;display:none}
+#prompt.on{display:block}
+#skip{position:absolute;right:20px;bottom:20px;display:none}
+#skip.on{display:block}
+
+/* Paneles */
+.panel{position:absolute;inset:0;display:none;overflow:auto;padding:24px 16px;
+  background:radial-gradient(1200px 600px at 15% -10%,#1d3a78 0,transparent 60%),var(--night)}
+.panel.on{display:block}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1{font-family:var(--font-display);font-weight:800;font-size:clamp(44px,9vw,92px);line-height:.9;margin:0;text-wrap:balance}
+h1 em{font-style:normal;color:var(--sun)}
+.lead{font-size:clamp(16px,2.2vw,21px);max-width:60ch;margin:0;opacity:.92}
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.mode{appearance:none;text-align:left;cursor:pointer;border:0;border-radius:22px;padding:22px;color:var(--night);
+  font-family:var(--font-body);font-weight:600;display:flex;flex-direction:column;gap:6px;box-shadow:0 8px 0 rgba(0,0,0,.35);
+  transition:transform .12s}
+.mode:hover{transform:translateY(-3px)}
+.mode:active{transform:translateY(4px);box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.mode strong{font-family:var(--font-display);font-size:30px;line-height:1}
+.mode small{font-size:15px}
+.mode .tag{font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7}
+#mRutina{background:var(--sun)}
+#mLibre{background:var(--mint)}
+#mPeque{background:var(--sky)}
+.field{display:flex;flex-direction:column;gap:6px;font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.field input{font:800 20px var(--font-body);padding:12px 14px;border-radius:14px;border:2px solid rgba(255,246,220,.4);
+  background:var(--panel);color:var(--cream);width:min(100%,320px);text-transform:none;letter-spacing:0}
+h2{font-family:var(--font-display);font-weight:800;font-size:26px;margin:0}
+.tables{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.tables section{display:flex;flex-direction:column;gap:8px}
+tr.me td{color:var(--sun)}
+.steps{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;counter-reset:s}
+.steps li{counter-increment:s;background:var(--panel);border-radius:16px;padding:14px 16px;font-size:15px}
+.steps li::before{content:counter(s);display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;
+  background:var(--sky);color:var(--night);font-weight:800;margin-right:8px}
+#status{min-height:1.4em;font-weight:800;color:var(--sky);margin:0}
+#status.err{color:var(--coral)}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+
+/* Final */
+#endScore{font-family:var(--font-display);font-weight:800;font-size:clamp(80px,18vw,180px);line-height:.85;color:var(--sun);
+  font-variant-numeric:tabular-nums}
+#endBest{font-weight:800;color:var(--mint);margin:0}
+table{border-collapse:collapse;width:100%;max-width:520px;font-variant-numeric:tabular-nums}
+td{padding:8px 4px;border-bottom:1px solid rgba(255,246,220,.16)}
+td:last-child{text-align:right;font-weight:800}
+.cta{appearance:none;border:0;border-radius:16px;padding:14px 22px;cursor:pointer;background:var(--sun);color:var(--night);
+  font:800 18px var(--font-body);box-shadow:0 6px 0 rgba(0,0,0,.35)}
+.cta.alt{background:transparent;color:var(--cream);border:2px solid rgba(255,246,220,.5);box-shadow:none}
+@media (prefers-reduced-motion:reduce){.mode{transition:none}}
+</style>
+</head>
+<body>
+<video id="cam" playsinline muted></video>
+<canvas id="stage"></canvas>
+
+<div id="hud">
+  <div class="hud-main">
+    <div id="hudName">Reto</div>
+    <div id="hudTip"></div>
+    <div class="bar"><div id="hudTime"></div></div>
+  </div>
+  <div class="stat"><b id="hudReps">0</b><span>Repeticiones</span></div>
+  <div class="stat"><b id="hudCombo">x0</b><span>Racha</span></div>
+  <div class="stat"><b id="hudScore">0</b><span>Puntos</span></div>
+  <button class="icon-btn" id="btnQuit" type="button">Salir</button>
+</div>
+<div id="big"></div>
+<div id="prompt"></div>
+<button class="icon-btn" id="skip" type="button">Empezar ya</button>
+
+<section class="panel on" id="menu">
+  <div class="wrap">
+    <h1>Reto <em>en Casa</em></h1>
+    <p class="lead">Un juego de movimiento para la sala. La cámara te ve, tú saltas, esquivas y revientas burbujas, y cada movimiento bien hecho suma puntos.</p>
+    <label class="field" for="playerName">¿Quién juega?
+      <input id="playerName" type="text" maxlength="14" placeholder="Tu nombre" autocomplete="off">
+    </label>
+    <div class="modes">
+      <button class="mode" id="mRutina" type="button">
+        <span class="tag">1 jugador · 3 minutos</span>
+        <strong>Rutina completa</strong>
+        <small>Seis retos seguidos: burbujas, saltos, muro, sentadillas, rodillas arriba y manos al cielo.</small>
+      </button>
+      <button class="mode" id="mLibre" type="button">
+        <span class="tag">Toda la familia · 75 segundos</span>
+        <strong>Burbujas libres</strong>
+        <small>Hasta tres personas a la vez. Solo hay que tocar las burbujas con las manos.</small>
+      </button>
+      <button class="mode" id="mPeque" type="button">
+        <span class="tag">Para los más chiquitos · sin reloj</span>
+        <strong>Modo peque</strong>
+        <small>Estrellas grandes y lentas, festejo en cada toque. Se acaba cuando tú quieras con el botón Terminar.</small>
+      </button>
+    </div>
+    <p id="rotate">Gira el teléfono en horizontal para jugar mejor.</p>
+    <p id="status" role="status"></p>
+    <ol class="steps">
+      <li>Duplica la pantalla en la tele y apoya el equipo con la cámara a la altura del pecho.</li>
+      <li>Despeja unos dos metros frente a la pantalla.</li>
+      <li>Aléjate hasta que la cámara vea de la cabeza a las rodillas.</li>
+    </ol>
+    <div class="row">
+      <button class="icon-btn" id="btnFull" type="button">Pantalla completa</button>
+      <button class="icon-btn" id="btnSound" type="button" aria-pressed="true">Sonido y voz: sí</button>
+    </div>
+  </div>
+</section>
+
+<section class="panel" id="end">
+  <div class="wrap">
+    <h1 id="endTitle">¡Reto cumplido!</h1>
+    <div id="endScore">0</div>
+    <p id="endBest"></p>
+    <div class="tables">
+      <section><h2>Tu partida</h2><table id="endTable"></table></section>
+      <section id="boardBox"><h2>Récords de la familia</h2><table id="endBoard"></table></section>
+    </div>
+    <div class="row">
+      <button class="cta" id="btnAgain" type="button">Jugar otra vez</button>
+      <button class="cta alt" id="btnMenu" type="button">Volver al menú</button>
+    </div>
+  </div>
+</section>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const video = $('cam'), cv = $('stage'), ctx = cv.getContext('2d');
+const CSSV = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = { night: CSSV('--night'), cream: CSSV('--cream'), sun: CSSV('--sun'), coral: CSSV('--coral'), mint: CSSV('--mint'), sky: CSSV('--sky') };
+const BUBBLE_COLORS = [C.sun, C.coral, C.mint, C.sky];
+
+const MP_VERSION = '0.10.14';
+const MP_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}`;
+const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
+
+const RUTINA = [
+  { id: 'burbujas',    name: 'Revienta las burbujas', tip: 'Tócalas con las manos',            secs: 25 },
+  { id: 'saltos',      name: 'Salta',                 tip: 'Despega los pies del piso',        secs: 20 },
+  { id: 'muro',        name: 'Esquiva el muro',       tip: 'Muévete al lado que queda libre',  secs: 25 },
+  { id: 'sentadillas', name: 'Sentadillas',           tip: 'Baja la cadera y vuelve a subir',  secs: 20 },
+  { id: 'marcha',      name: 'Rodillas arriba',       tip: 'Marcha subiendo una y otra',       secs: 20 },
+  { id: 'brazos',      name: 'Manos al cielo',        tip: 'Sube y baja los dos brazos',       secs: 20 },
+];
+const LIBRE = [{ id: 'burbujas', name: 'Burbujas libres', tip: 'Todos a tocar burbujas', secs: 75, libre: true }];
+const PEQUE = [{ id: 'burbujas', name: 'Atrapa las estrellas', tip: 'Tócalas con las manos', secs: Infinity, libre: true, peque: true }];
+const LISTS = { rutina: RUTINA, libre: LIBRE, peque: PEQUE };
+const PRAISE = ['¡Bravo!', '¡Muy bien!', '¡Eso!', '¡Súper!', '¡Otra más!'];
+const MEL = [523, 0, 659, 0, 784, 0, 659, 0, 587, 0, 698, 0, 880, 0, 698, 0];
+const BASS = [131, 131, 175, 196];
+
+let W = 0, H = 0, dpr = 1, T = { ox: 0, oy: 0, dw: 1, dh: 1 };
+let landmarker = null, camReady = false, lastVideoT = -1, poses = [];
+let sound = true, actx = null;
+const base = { hip: null, torso: 1 };
+const G = { mode: null, list: RUTINA, phase: 'menu', t0: 0, idx: 0, score: 0, combo: 0, lastRep: 0, reps: [], st: {},
+            bubbles: [], parts: [], floats: [], flash: 0, okSince: 0 };
+
+/* ---------- utilidades ---------- */
+function fit() {
+  dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  W = cv.clientWidth; H = cv.clientHeight;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+}
+function calcT() {
+  const vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
+  const s = Math.max(W / vw, H / vh);
+  T.dw = vw * s; T.dh = vh * s; T.ox = (W - T.dw) / 2; T.oy = (H - T.dh) / 2;
+}
+const toScreen = l => ({ x: W - (T.ox + l.x * T.dw), y: T.oy + l.y * T.dh, v: l.visibility ?? 1 });
+const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+function tone(freq, dur, type, vol) {
+  if (!sound || !actx) return;
+  try {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + dur);
+    o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + dur);
+  } catch (e) {}
+}
+const beep = (freq = 600, dur = 0.09, type = 'triangle') => tone(freq, dur, type, 0.18);
+const music = {
+  timer: null, i: 0,
+  start() { if (this.timer || !actx) return; this.i = 0; this.timer = setInterval(() => this.step(), 160); },
+  stop() { clearInterval(this.timer); this.timer = null; },
+  step() {
+    const m = MEL[this.i % 16], b = this.i % 4 === 0 ? BASS[(this.i / 4 | 0) % 4] : 0;
+    if (m) tone(m, 0.14, 'square', 0.03);
+    if (b) tone(b, 0.3, 'triangle', 0.07);
+    this.i++;
+  },
+};
+function say(text) {
+  if (!sound || !('speechSynthesis' in window)) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'es-US'; u.rate = 1.05; u.pitch = 1.1;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+function setStatus(msg, err = false) { const s = $('status'); s.textContent = msg; s.classList.toggle('err', err); }
+function setPrompt(msg) { const p = $('prompt'); if (p.textContent !== msg) p.textContent = msg; p.classList.toggle('on', !!msg); }
+function setBig(msg) { const b = $('big'); if (b.textContent !== String(msg)) b.textContent = msg; }
+function show(id) { for (const p of ['menu', 'end']) $(p).classList.toggle('on', p === id); }
+
+/* ---------- cámara y modelo ---------- */
+async function initCamera() {
+  if (camReady) return;
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error('NO_API');
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+  video.srcObject = stream;
+  await video.play();
+  camReady = true;
+}
+async function initModel() {
+  if (landmarker) return;
+  const { PoseLandmarker, FilesetResolver } = await import(`${MP_BASE}/vision_bundle.mjs`);
+  const files = await FilesetResolver.forVisionTasks(`${MP_BASE}/wasm`);
+  const make = delegate => PoseLandmarker.createFromOptions(files, {
+    baseOptions: { modelAssetPath: MODEL_URL, delegate }, runningMode: 'VIDEO', numPoses: 1,
+  });
+  try { landmarker = await make('GPU'); } catch (e) { landmarker = await make('CPU'); }
+}
+function explain(err) {
+  const n = err?.name || err?.message || '';
+  if (n === 'NotAllowedError') return 'La cámara está bloqueada. Dale permiso en el candado de la barra de direcciones y vuelve a intentar.';
+  if (n === 'NotFoundError') return 'No encontré ninguna cámara conectada a este equipo.';
+  if (n === 'NotReadableError') return 'Otra aplicación está usando la cámara. Ciérrala y vuelve a intentar.';
+  if (n === 'NO_API') return 'Este navegador no deja usar la cámara desde un archivo. Ábrelo con Chrome o Edge, o sírvelo desde http://localhost.';
+  return 'No pude cargar el detector de movimiento. Revisa la conexión a internet y vuelve a intentar.';
+}
+
+/* ---------- pantalla siempre encendida ---------- */
+let wake = null, wantAwake = false;
+async function keepAwake(on) {
+  wantAwake = on;
+  try {
+    if (on && !wake && 'wakeLock' in navigator) {
+      wake = await navigator.wakeLock.request('screen');
+      wake.addEventListener('release', () => { wake = null; });
+    } else if (!on && wake) { await wake.release(); wake = null; }
+  } catch (e) { wake = null; }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && wantAwake) keepAwake(true); });
+
+/* ---------- flujo ---------- */
+function go(phase) { G.phase = phase; G.t0 = performance.now(); }
+
+async function start(mode) {
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch (e) {}
+  say('¡Vamos!'); // en iPhone la voz solo se desbloquea dentro de un toque
+  keepAwake(true);
+  setStatus('Encendiendo la cámara…');
+  try {
+    await initCamera();
+    setStatus('Cargando el detector de movimiento…');
+    await initModel();
+    await landmarker.setOptions({ numPoses: mode === 'rutina' ? 1 : 3 });
+  } catch (err) { console.error(err); setStatus(explain(err), true); return; }
+  setStatus('');
+  const name = $('playerName').value.trim() || 'Jugador';
+  try { localStorage.setItem('retoencasa.player', name); } catch (e) {}
+  Object.assign(G, { mode, player: name, list: LISTS[mode], idx: 0, score: 0, combo: 0, lastRep: 0,
+                     st: {}, bubbles: [], parts: [], floats: [], okSince: 0 });
+  $('btnQuit').textContent = mode === 'peque' ? 'Terminar' : 'Salir';
+  music.start();
+  G.reps = G.list.map(() => 0);
+  base.hip = null;
+  show(null); $('hud').classList.add('on'); $('skip').classList.add('on');
+  fit(); calcT(); hud(true);
+  go('calib');
+}
+function beginStation() {
+  const s = G.list[G.idx];
+  G.st = {}; G.bubbles = [];
+  $('skip').classList.remove('on'); setPrompt(''); setBig('');
+  say(s.name); beep(880, 0.15);
+  hud(true); go('play');
+}
+function endStation() {
+  beep(660, 0.12); beep(990, 0.2);
+  G.bubbles = []; G.st = {};
+  if (G.idx + 1 < G.list.length) { G.idx++; hud(true); go('rest'); }
+  else finish();
+}
+function finish() {
+  go('end'); $('hud').classList.remove('on'); setPrompt(''); setBig('');
+  music.stop(); keepAwake(false);
+  const peque = G.mode === 'peque';
+  const key = 'retoencasa.board.' + G.mode;
+  let board = [];
+  try { board = JSON.parse(localStorage.getItem(key)) || []; } catch (e) {}
+  if (!Array.isArray(board)) board = [];
+  const prevTop = board[0]?.s || 0;
+  const entry = { n: G.player, s: G.score, t: Date.now() };
+  board.push(entry); board.sort((a, b) => b.s - a.s); board = board.slice(0, 5);
+  try { localStorage.setItem(key, JSON.stringify(board)); } catch (e) {}
+  const first = board[0] === entry;
+  $('endTitle').textContent = peque ? '¡Muy bien!' : first && prevTop > 0 ? '¡Nuevo récord de la casa!' : '¡Reto cumplido!';
+  $('endScore').textContent = peque ? G.reps[0] : G.score;
+  $('endBest').textContent = peque ? 'estrellas atrapadas'
+    : first ? `${G.player} va en primer lugar.` : `Va primero ${board[0].n} con ${board[0].s} puntos.`;
+  const rows = (tbl, list) => {
+    tbl.textContent = '';
+    for (const [a, b, me] of list) {
+      const tr = tbl.insertRow(); if (me) tr.className = 'me';
+      tr.insertCell().textContent = a; tr.insertCell().textContent = b;
+    }
+  };
+  rows($('endTable'), G.list.map((s, i) => [s.name, G.reps[i], false]));
+  $('boardBox').style.display = peque ? 'none' : '';
+  rows($('endBoard'), board.map((e, i) => [`${i + 1}. ${e.n}`, e.s, e === entry]));
+  say(peque ? `¡Atrapaste ${G.reps[0]} estrellas!` : `${G.player}, terminaste con ${G.score} puntos`);
+  show('end');
+}
+function quit() {
+  music.stop(); keepAwake(false);
+  go('menu'); $('hud').classList.remove('on'); $('skip').classList.remove('on'); setPrompt(''); setBig('');
+  try { speechSynthesis.cancel(); } catch (e) {}
+  show('menu');
+}
+
+/* ---------- puntaje ---------- */
+function rep(x, y, pts = 10) {
+  const now = performance.now();
+  G.combo++; G.lastRep = now;
+  const gain = pts + Math.min(G.combo, 10);
+  G.score += gain; G.reps[G.idx]++;
+  G.floats.push({ x, y, t0: now, txt: '+' + gain });
+  beep(480 + Math.min(G.combo, 12) * 30, 0.08);
+}
+function miss() { G.combo = 0; G.flash = performance.now(); beep(150, 0.25, 'sawtooth'); }
+function burst(x, y, c, n = 14) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, sp = rnd(120, 420);
+    G.parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t0: performance.now(), c });
+  }
+}
+
+/* ---------- lectura del cuerpo ---------- */
+function metrics(p) {
+  const sh = mid(p[11], p[12]), hip = mid(p[23], p[24]);
+  return { sh, hip, nose: p[0], torso: Math.max(1, Math.hypot(sh.x - hip.x, sh.y - hip.y)),
+           ok: Math.min(p[11].v, p[12].v, p[23].v, p[24].v) > 0.5,
+           legs: p[25].v > 0.5 && p[26].v > 0.5 && Math.max(p[25].y, p[26].y) < H * 0.98 };
+}
+function player() {
+  let best = null;
+  for (const p of poses) { const m = metrics(p); if (!best || m.torso > best.m.torso) best = { p, m }; }
+  return best;
+}
+function updateBase(m) {
+  if (!m.ok) return;
+  if (base.hip == null) { base.hip = m.hip.y; base.torso = m.torso; return; }
+  const d = Math.abs(m.hip.y - base.hip) / base.torso;
+  base.hip += (m.hip.y - base.hip) * (d < 0.1 ? 0.05 : 0.004);
+  base.torso += (m.torso - base.torso) * 0.02;
+}
+
+/* ---------- retos ---------- */
+function newBubble(now, P, s) {
+  const r = clamp(Math.min(W, H) * 0.07, 34, 80) * (s.peque ? 1.5 : s.libre ? 1 : 0.85);
+  let x, y;
+  if (!s.libre && P && P.m.ok) {
+    // rutina: lejos del cuerpo, hay que estirarse o dar un paso
+    x = P.m.sh.x + (Math.random() < 0.5 ? -1 : 1) * rnd(1.1, 2.4) * P.m.torso;
+    y = P.m.sh.y + rnd(-1.5, 0.6) * P.m.torso;
+  } else if (s.peque) { x = rnd(0, W); y = rnd(H * 0.3, H * 0.85); }
+  else { x = rnd(0, W); y = rnd(H * 0.14, H * 0.82); }
+  return { x: clamp(x, r + 16, W - r - 16), y: clamp(y, 120 + r, H - r - 16), r, born: now, star: !!s.peque,
+           c: BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)] };
+}
+const RUN = {
+  burbujas(now, P, s) {
+    const max = s.peque ? 4 : s.libre ? 5 : 3, life = s.peque ? 15000 : s.libre ? 7000 : 3000, pad = s.peque ? 40 : 14;
+    G.bubbles = G.bubbles.filter(b => !b.dead && now - b.born < life);
+    while (G.bubbles.length < max) G.bubbles.push(newBubble(now, P, s));
+    for (const pose of poses) for (const i of [15, 16, 19, 20]) {
+      const h = pose[i]; if (h.v < 0.4) continue;
+      for (const b of G.bubbles) {
+        if (b.dead || now - b.born < 350 || Math.hypot(h.x - b.x, h.y - b.y) > b.r + pad) continue;
+        b.dead = true; burst(b.x, b.y, b.c, s.peque ? 34 : 14); rep(b.x, b.y);
+        if (s.peque) { G.st.n = (G.st.n || 0) + 1; if (G.st.n % 4 === 0) say(PRAISE[Math.floor(Math.random() * PRAISE.length)]); }
+      }
+    }
+  },
+  saltos(now, P) {
+    if (!P || !P.m.ok) return;
+    const rel = (base.hip - P.m.hip.y) / base.torso, st = G.st;
+    if (!st.up && rel > 0.16) { st.up = true; rep(P.m.sh.x, P.m.sh.y - 40); }
+    else if (st.up && rel < 0.06) st.up = false;
+  },
+  sentadillas(now, P) {
+    if (!P || !P.m.ok) return;
+    const rel = (P.m.hip.y - base.hip) / base.torso, st = G.st;
+    if (!st.down && rel > 0.28) st.down = true;
+    else if (st.down && rel < 0.1) { st.down = false; rep(P.m.sh.x, P.m.sh.y - 40, 15); }
+  },
+  marcha(now, P) {
+    if (!P || !P.m.ok) return;
+    const st = G.st, p = P.p;
+    for (const [side, hipI, kneeI] of [['L', 23, 25], ['R', 24, 26]]) {
+      if (p[kneeI].v < 0.4) continue;
+      const gap = (p[kneeI].y - p[hipI].y) / base.torso;
+      if (!st[side] && gap < 0.42) { st[side] = true; rep(p[kneeI].x, p[kneeI].y - 30, 6); }
+      else if (st[side] && gap > 0.6) st[side] = false;
+    }
+  },
+  brazos(now, P) {
+    if (!P || !P.m.ok) return;
+    const st = G.st, p = P.p, l = p[15], r = p[16];
+    if (l.v < 0.3 || r.v < 0.3) return;
+    const up = l.y < p[0].y && r.y < p[0].y, down = l.y > P.m.sh.y && r.y > P.m.sh.y;
+    if (!st.up && up) { st.up = true; rep(P.m.sh.x, p[0].y - 60); }
+    else if (st.up && down) st.up = false;
+  },
+  muro(now, P) {
+    const st = G.st;
+    if (!st.w) { if (now < (st.next || 0)) return; st.w = { side: Math.random() < 0.5 ? 'L' : 'R', t0: now, dur: 2400 }; beep(330, 0.08); return; }
+    if ((now - st.w.t0) / st.w.dur < 1) return;
+    const x = P ? P.m.nose.x : W / 2;
+    const inDanger = st.w.side === 'L' ? x < W / 2 : x > W / 2;
+    if (!P || inDanger) miss(); else rep(x, H * 0.4, 15);
+    st.w = null; st.next = now + 700;
+  },
+};
+
+/* ---------- actualización ---------- */
+function update(now) {
+  const P = player();
+  if (P) updateBase(P.m);
+  if (G.combo && now - G.lastRep > 3500) G.combo = 0;
+  switch (G.phase) {
+    case 'calib': {
+      const ok = !!P && P.m.ok && (G.mode !== 'rutina' || P.m.legs);
+      if (ok) { if (!G.okSince) G.okSince = now; if (now - G.okSince > 900) go('count'); } else G.okSince = 0;
+      setBig('');
+      setPrompt(!P ? 'Párate frente a la cámara' : ok ? '¡Perfecto! Quédate ahí'
+        : G.mode === 'rutina' ? 'Aléjate hasta que se vean tus rodillas' : 'Acércate un poco para que te vea bien');
+      break;
+    }
+    case 'count': {
+      $('skip').classList.remove('on');
+      const n = 3 - Math.floor((now - G.t0) / 900);
+      if (n <= 0) beginStation();
+      else { if ($('big').textContent !== String(n)) beep(440, 0.1); setBig(n); setPrompt(G.list[G.idx].name); }
+      break;
+    }
+    case 'play': {
+      const s = G.list[G.idx];
+      RUN[s.id](now, P, s);
+      if ((now - G.t0) / 1000 >= s.secs) endStation();
+      break;
+    }
+    case 'rest': {
+      const s = G.list[G.idx];
+      setPrompt(`Respira. Sigue: ${s.name}`);
+      if (now - G.t0 > 3500) beginStation();
+      break;
+    }
+  }
+  hud(false);
+}
+let hudCache = {};
+function hud(force) {
+  const s = G.list[G.idx];
+  const vals = { hudName: s.name, hudTip: s.tip, hudReps: G.reps[G.idx] ?? 0, hudCombo: 'x' + G.combo, hudScore: G.score };
+  for (const k in vals) if (force || hudCache[k] !== vals[k]) { $(k).textContent = vals[k]; hudCache[k] = vals[k]; }
+  const k = G.phase === 'play' ? clamp(1 - (performance.now() - G.t0) / 1000 / s.secs, 0, 1) : 1;
+  $('hudTime').style.transform = `scaleX(${k})`;
+}
+
+/* ---------- dibujo ---------- */
+const BONES = [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28]];
+function render(now) {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = C.night; ctx.fillRect(0, 0, W, H);
+  if (camReady && G.phase !== 'menu' && G.phase !== 'end') {
+    ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1);
+    ctx.drawImage(video, T.ox, T.oy, T.dw, T.dh); ctx.restore();
+    ctx.fillStyle = 'rgba(11,23,48,.18)'; ctx.fillRect(0, 0, W, H);
+  } else return;
+
+  // muro
+  const w = G.phase === 'play' ? G.st.w : null;
+  if (w) {
+    const k = clamp((now - w.t0) / w.dur, 0, 1), half = W / 2;
+    ctx.fillStyle = 'rgba(255,93,115,.16)';
+    ctx.fillRect(w.side === 'L' ? 0 : half, 0, half, H);
+    ctx.fillStyle = 'rgba(255,93,115,.72)';
+    const ww = half * k;
+    ctx.fillRect(w.side === 'L' ? 0 : W - ww, 0, ww, H);
+    ctx.fillStyle = C.cream; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `800 ${Math.round(Math.min(W, H) * 0.2)}px "Baloo 2", sans-serif`;
+    ctx.fillText(w.side === 'L' ? '→' : '←', w.side === 'L' ? half * 1.5 : half * 0.5, H * 0.5);
+  }
+
+  // esqueleto
+  ctx.lineCap = 'round';
+  for (const p of poses) {
+    ctx.strokeStyle = 'rgba(61,220,151,.75)'; ctx.lineWidth = 6;
+    ctx.beginPath();
+    for (const [a, b] of BONES) { if (p[a].v < 0.4 || p[b].v < 0.4) continue; ctx.moveTo(p[a].x, p[a].y); ctx.lineTo(p[b].x, p[b].y); }
+    ctx.stroke();
+    for (const i of [15, 16]) {
+      if (p[i].v < 0.4) continue;
+      ctx.fillStyle = C.sun; ctx.beginPath(); ctx.arc(p[i].x, p[i].y, 14, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // burbujas
+  for (const b of G.bubbles) {
+    const age = now - b.born, grow = Math.min(1, age / 250), wob = Math.sin(age / 260) * 4;
+    ctx.globalAlpha = 0.85; ctx.fillStyle = b.c;
+    if (b.star) {
+      const R = b.r * grow, rot = age / 1800;
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const a = rot + i * Math.PI / 5 - Math.PI / 2, rr = i % 2 ? R * 0.5 : R * 1.1;
+        ctx.lineTo(b.x + Math.cos(a) * rr, b.y + wob + Math.sin(a) * rr);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1; ctx.lineWidth = 5; ctx.strokeStyle = C.cream; ctx.stroke();
+      continue;
+    }
+    ctx.beginPath(); ctx.arc(b.x, b.y + wob, b.r * grow, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.55; ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(b.x - b.r * 0.32, b.y + wob - b.r * 0.32, b.r * 0.2 * grow, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // partículas y puntos flotantes
+  G.parts = G.parts.filter(q => now - q.t0 < 600);
+  for (const q of G.parts) {
+    const t = (now - q.t0) / 1000;
+    ctx.globalAlpha = 1 - t / 0.6; ctx.fillStyle = q.c;
+    ctx.beginPath(); ctx.arc(q.x + q.vx * t, q.y + q.vy * t + 500 * t * t, 7, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  G.floats = G.floats.filter(f => now - f.t0 < 800);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `800 ${Math.round(clamp(Math.min(W, H) * 0.07, 30, 64))}px "Baloo 2", sans-serif`;
+  for (const f of G.floats) {
+    const t = (now - f.t0) / 800;
+    ctx.globalAlpha = 1 - t;
+    ctx.lineWidth = 8; ctx.strokeStyle = C.night; ctx.strokeText(f.txt, f.x, f.y - t * 80);
+    ctx.fillStyle = C.sun; ctx.fillText(f.txt, f.x, f.y - t * 80);
+  }
+  ctx.globalAlpha = 1;
+
+  // destello de fallo
+  const fl = now - G.flash;
+  if (fl < 350) { ctx.fillStyle = `rgba(255,93,115,${0.45 * (1 - fl / 350)})`; ctx.fillRect(0, 0, W, H); }
+}
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (cv.clientWidth !== W || cv.clientHeight !== H) { fit(); calcT(); }
+  const live = G.phase !== 'menu' && G.phase !== 'end';
+  if (live && landmarker && camReady && video.readyState >= 2 && video.currentTime !== lastVideoT) {
+    lastVideoT = video.currentTime; calcT();
+    try { poses = (landmarker.detectForVideo(video, now).landmarks || []).map(p => p.map(toScreen)); } catch (e) { poses = []; }
+  }
+  if (live) update(now);
+  render(now);
+}
+
+/* ---------- controles ---------- */
+$('mRutina').addEventListener('click', () => start('rutina'));
+$('mLibre').addEventListener('click', () => start('libre'));
+$('btnAgain').addEventListener('click', () => start(G.mode));
+$('btnMenu').addEventListener('click', quit);
+$('mPeque').addEventListener('click', () => start('peque'));
+$('btnQuit').addEventListener('click', () => (G.mode === 'peque' && G.phase === 'play') ? finish() : quit());
+try { $('playerName').value = localStorage.getItem('retoencasa.player') || ''; } catch (e) {}
+$('skip').addEventListener('click', () => { if (G.phase === 'calib') go('count'); });
+$('btnSound').addEventListener('click', e => {
+  sound = !sound; e.currentTarget.setAttribute('aria-pressed', String(sound));
+  e.currentTarget.textContent = 'Sonido y voz: ' + (sound ? 'sí' : 'no');
+  if (!sound) { try { speechSynthesis.cancel(); } catch (err) {} }
+});
+$('btnFull').addEventListener('click', async () => {
+  try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); } catch (e) {}
+});
+if (!document.documentElement.requestFullscreen) $('btnFull').style.display = 'none';
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && G.phase !== 'menu' && !document.fullscreenElement) quit(); });
+window.addEventListener('resize', () => { fit(); calcT(); });
+
+fit();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
