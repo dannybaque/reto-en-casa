@@ -155,7 +155,7 @@ td:last-child{text-align:right;font-weight:800}
       <button class="mode" id="mPeque" type="button">
         <span class="tag">Para los más chiquitos · sin reloj</span>
         <strong>Modo peque</strong>
-        <small>Estrellas grandes y lentas, festejo en cada toque. Se acaba cuando tú quieras con el botón Terminar.</small>
+        <small>Animalitos y vehículos grandes y lentos. La voz dice cada uno en español y en inglés. Se acaba con el botón Terminar.</small>
       </button>
     </div>
     <p id="rotate">Gira el teléfono en horizontal para jugar mejor.</p>
@@ -208,7 +208,17 @@ const RUTINA = [
   { id: 'brazos',      name: 'Manos al cielo',        tip: 'Sube y baja los dos brazos',       secs: 20 },
 ];
 const LIBRE = [{ id: 'burbujas', name: 'Burbujas libres', tip: 'Todos a tocar burbujas', secs: 75, libre: true }];
-const PEQUE = [{ id: 'burbujas', name: 'Atrapa las estrellas', tip: 'Tócalas con las manos', secs: Infinity, libre: true, peque: true }];
+const PEQUE = [{ id: 'burbujas', name: 'Atrapa a los amigos', tip: 'Tócalos con las manos', secs: Infinity, libre: true, peque: true }];
+const ITEMS = [
+  { e: '🐶', es: 'Perro', en: 'Dog', fx: 'animal' },      { e: '🐱', es: 'Gato', en: 'Cat', fx: 'animal' },
+  { e: '🦆', es: 'Pato', en: 'Duck', fx: 'animal' },      { e: '🐮', es: 'Vaca', en: 'Cow', fx: 'animal' },
+  { e: '🐷', es: 'Cerdito', en: 'Pig', fx: 'animal' },    { e: '🐸', es: 'Rana', en: 'Frog', fx: 'animal' },
+  { e: '🦖', es: 'Dinosaurio', en: 'Dinosaur', fx: 'roar' },
+  { e: '🚗', es: 'Carro', en: 'Car', fx: 'horn' },        { e: '🚌', es: 'Bus', en: 'Bus', fx: 'horn' },
+  { e: '🚒', es: 'Bomberos', en: 'Fire truck', fx: 'siren' }, { e: '🚂', es: 'Tren', en: 'Train', fx: 'horn' },
+  { e: '🚜', es: 'Tractor', en: 'Tractor', fx: 'horn' },  { e: '🚁', es: 'Helicóptero', en: 'Helicopter', fx: 'siren' },
+];
+const MEL_K = [392, 0, 440, 0, 523, 0, 440, 0, 392, 0, 330, 0, 392, 0, 0, 0];
 const LISTS = { rutina: RUTINA, libre: LIBRE, peque: PEQUE };
 const PRAISE = ['¡Bravo!', '¡Muy bien!', '¡Eso!', '¡Súper!', '¡Otra más!'];
 const MEL = [523, 0, 659, 0, 784, 0, 659, 0, 587, 0, 698, 0, 880, 0, 698, 0];
@@ -248,13 +258,37 @@ function tone(freq, dur, type, vol) {
   } catch (e) {}
 }
 const beep = (freq = 600, dur = 0.09, type = 'triangle') => tone(freq, dur, type, 0.18);
+function sayParts(parts) {
+  if (!sound || !('speechSynthesis' in window)) return;
+  try {
+    speechSynthesis.cancel();
+    for (const [text, lang] of parts) {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = lang; u.rate = 1; u.pitch = 1.15;
+      speechSynthesis.speak(u);
+    }
+  } catch (e) {}
+}
+function fx(kind) {
+  if (kind === 'horn') { tone(392, 0.18, 'square', 0.12); setTimeout(() => tone(392, 0.25, 'square', 0.12), 220); }
+  else if (kind === 'siren') [660, 880, 660, 880].forEach((f, i) => setTimeout(() => tone(f, 0.16, 'sine', 0.14), i * 160));
+  else if (kind === 'roar') tone(90, 0.5, 'sawtooth', 0.16);
+  else { tone(700, 0.08, 'sine', 0.14); setTimeout(() => tone(950, 0.1, 'sine', 0.14), 90); }
+}
+function praise() {
+  const p = PRAISE[Math.floor(Math.random() * PRAISE.length)];
+  return G.player && G.player !== 'Jugador' ? p.replace('!', `, ${G.player}!`) : p;
+}
 const music = {
-  timer: null, i: 0,
-  start() { if (this.timer || !actx) return; this.i = 0; this.timer = setInterval(() => this.step(), 160); },
+  timer: null, i: 0, kid: false,
+  start(kid = false) {
+    if (this.timer || !actx) return;
+    this.i = 0; this.kid = kid; this.timer = setInterval(() => this.step(), kid ? 230 : 160);
+  },
   stop() { clearInterval(this.timer); this.timer = null; },
   step() {
-    const m = MEL[this.i % 16], b = this.i % 4 === 0 ? BASS[(this.i / 4 | 0) % 4] : 0;
-    if (m) tone(m, 0.14, 'square', 0.03);
+    const m = (this.kid ? MEL_K : MEL)[this.i % 16], b = this.i % 4 === 0 ? BASS[(this.i / 4 | 0) % 4] : 0;
+    if (m) tone(m, this.kid ? 0.2 : 0.14, this.kid ? 'sine' : 'square', this.kid ? 0.06 : 0.03);
     if (b) tone(b, 0.3, 'triangle', 0.07);
     this.i++;
   },
@@ -331,9 +365,9 @@ async function start(mode) {
   const name = $('playerName').value.trim() || 'Jugador';
   try { localStorage.setItem('retoencasa.player', name); } catch (e) {}
   Object.assign(G, { mode, player: name, list: LISTS[mode], idx: 0, score: 0, combo: 0, lastRep: 0,
-                     st: {}, bubbles: [], parts: [], floats: [], okSince: 0 });
+                     st: {}, bubbles: [], parts: [], floats: [], conf: [], okSince: 0 });
   $('btnQuit').textContent = mode === 'peque' ? 'Terminar' : 'Salir';
-  music.start();
+  music.start(mode === 'peque');
   G.reps = G.list.map(() => 0);
   base.hip = null;
   show(null); $('hud').classList.add('on'); $('skip').classList.add('on');
@@ -368,7 +402,7 @@ function finish() {
   const first = board[0] === entry;
   $('endTitle').textContent = peque ? '¡Muy bien!' : first && prevTop > 0 ? '¡Nuevo récord de la casa!' : '¡Reto cumplido!';
   $('endScore').textContent = peque ? G.reps[0] : G.score;
-  $('endBest').textContent = peque ? 'estrellas atrapadas'
+  $('endBest').textContent = peque ? 'amigos atrapados'
     : first ? `${G.player} va en primer lugar.` : `Va primero ${board[0].n} con ${board[0].s} puntos.`;
   const rows = (tbl, list) => {
     tbl.textContent = '';
@@ -380,7 +414,7 @@ function finish() {
   rows($('endTable'), G.list.map((s, i) => [s.name, G.reps[i], false]));
   $('boardBox').style.display = peque ? 'none' : '';
   rows($('endBoard'), board.map((e, i) => [`${i + 1}. ${e.n}`, e.s, e === entry]));
-  say(peque ? `¡Atrapaste ${G.reps[0]} estrellas!` : `${G.player}, terminaste con ${G.score} puntos`);
+  say(peque ? `¡Atrapaste ${G.reps[0]}!` : `${G.player}, terminaste con ${G.score} puntos`);
   show('end');
 }
 function quit() {
@@ -429,7 +463,7 @@ function updateBase(m) {
 
 /* ---------- retos ---------- */
 function newBubble(now, P, s) {
-  const r = clamp(Math.min(W, H) * 0.07, 34, 80) * (s.peque ? 1.5 : s.libre ? 1 : 0.85);
+  const r = clamp(Math.min(W, H) * 0.07, 34, 80) * (s.peque ? 1.6 : s.libre ? 1 : 0.85);
   let x, y;
   if (!s.libre && P && P.m.ok) {
     // rutina: lejos del cuerpo, hay que estirarse o dar un paso
@@ -437,7 +471,8 @@ function newBubble(now, P, s) {
     y = P.m.sh.y + rnd(-1.5, 0.6) * P.m.torso;
   } else if (s.peque) { x = rnd(0, W); y = rnd(H * 0.3, H * 0.85); }
   else { x = rnd(0, W); y = rnd(H * 0.14, H * 0.82); }
-  return { x: clamp(x, r + 16, W - r - 16), y: clamp(y, 120 + r, H - r - 16), r, born: now, star: !!s.peque,
+  return { x: clamp(x, r + 16, W - r - 16), y: clamp(y, 120 + r, H - r - 16), r, born: now,
+           item: s.peque ? ITEMS[Math.floor(Math.random() * ITEMS.length)] : null,
            c: BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)] };
 }
 const RUN = {
@@ -450,7 +485,13 @@ const RUN = {
       for (const b of G.bubbles) {
         if (b.dead || now - b.born < 350 || Math.hypot(h.x - b.x, h.y - b.y) > b.r + pad) continue;
         b.dead = true; burst(b.x, b.y, b.c, s.peque ? 34 : 14); rep(b.x, b.y);
-        if (s.peque) { G.st.n = (G.st.n || 0) + 1; if (G.st.n % 4 === 0) say(PRAISE[Math.floor(Math.random() * PRAISE.length)]); }
+        if (s.peque && b.item) {
+          G.floats[G.floats.length - 1].txt = b.item.es; fx(b.item.fx);
+          G.st.n = (G.st.n || 0) + 1;
+          const parts = [[b.item.es, 'es-US'], [b.item.en, 'en-US']];
+          if (G.st.n % 4 === 0) parts.push([praise(), 'es-US']);
+          sayParts(parts);
+        }
       }
     }
   },
@@ -522,6 +563,13 @@ function update(now) {
       if ((now - G.t0) / 1000 >= s.secs) endStation();
       break;
     }
+    case 'party': {
+      for (let i = 0; i < 4; i++) G.conf.push({ x: rnd(0, W), y: -20, vx: rnd(-60, 60), vy: rnd(140, 360), t0: now,
+        c: BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)], w: rnd(8, 16) });
+      if (Math.random() < 0.3) tone(rnd(900, 1800), 0.05, 'triangle', 0.08);
+      if (now - G.t0 > 3800) finish();
+      break;
+    }
     case 'rest': {
       const s = G.list[G.idx];
       setPrompt(`Respira. Sigue: ${s.name}`);
@@ -582,15 +630,17 @@ function render(now) {
   for (const b of G.bubbles) {
     const age = now - b.born, grow = Math.min(1, age / 250), wob = Math.sin(age / 260) * 4;
     ctx.globalAlpha = 0.85; ctx.fillStyle = b.c;
-    if (b.star) {
-      const R = b.r * grow, rot = age / 1800;
-      ctx.beginPath();
-      for (let i = 0; i < 10; i++) {
-        const a = rot + i * Math.PI / 5 - Math.PI / 2, rr = i % 2 ? R * 0.5 : R * 1.1;
-        ctx.lineTo(b.x + Math.cos(a) * rr, b.y + wob + Math.sin(a) * rr);
-      }
-      ctx.closePath(); ctx.fill();
-      ctx.globalAlpha = 1; ctx.lineWidth = 5; ctx.strokeStyle = C.cream; ctx.stroke();
+    if (b.item) {
+      const R = b.r * grow;
+      ctx.globalAlpha = 0.92;
+      ctx.beginPath(); ctx.arc(b.x, b.y + wob, R, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1; ctx.lineWidth = 6; ctx.strokeStyle = C.cream; ctx.stroke();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = `${Math.round(R * 1.15)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+      ctx.fillStyle = C.night; ctx.fillText(b.item.e, b.x, b.y + wob + R * 0.06);
+      ctx.font = `800 ${Math.round(clamp(R * 0.34, 16, 34))}px "Baloo 2", sans-serif`;
+      ctx.lineWidth = 6; ctx.strokeStyle = C.night; ctx.strokeText(b.item.es, b.x, b.y + wob + R + 20);
+      ctx.fillStyle = C.cream; ctx.fillText(b.item.es, b.x, b.y + wob + R + 20);
       continue;
     }
     ctx.beginPath(); ctx.arc(b.x, b.y + wob, b.r * grow, 0, Math.PI * 2); ctx.fill();
@@ -618,6 +668,16 @@ function render(now) {
   }
   ctx.globalAlpha = 1;
 
+  // confeti de la fiesta final
+  if (G.conf && G.conf.length) {
+    G.conf = G.conf.filter(q => now - q.t0 < 4000);
+    for (const q of G.conf) {
+      const t = (now - q.t0) / 1000;
+      ctx.fillStyle = q.c;
+      ctx.fillRect(q.x + q.vx * t + Math.sin(t * 6 + q.w) * 12, q.y + q.vy * t, q.w, q.w * 0.6);
+    }
+  }
+
   // destello de fallo
   const fl = now - G.flash;
   if (fl < 350) { ctx.fillStyle = `rgba(255,93,115,${0.45 * (1 - fl / 350)})`; ctx.fillRect(0, 0, W, H); }
@@ -641,7 +701,17 @@ $('mLibre').addEventListener('click', () => start('libre'));
 $('btnAgain').addEventListener('click', () => start(G.mode));
 $('btnMenu').addEventListener('click', quit);
 $('mPeque').addEventListener('click', () => start('peque'));
-$('btnQuit').addEventListener('click', () => (G.mode === 'peque' && G.phase === 'play') ? finish() : quit());
+function party() {
+  G.bubbles = []; G.conf = [];
+  const name = G.player && G.player !== 'Jugador' ? G.player : '';
+  setPrompt(name ? `¡Bravo, ${name}!` : '¡Bravo!');
+  sayParts([[name ? `¡Bravo, ${name}! ¡Lo hiciste muy bien!` : '¡Bravo! ¡Lo hiciste muy bien!', 'es-US']]);
+  go('party');
+}
+$('btnQuit').addEventListener('click', () => {
+  if (G.mode === 'peque' && G.phase === 'play') party();
+  else if (G.phase !== 'party') quit();
+});
 try { $('playerName').value = localStorage.getItem('retoencasa.player') || ''; } catch (e) {}
 $('skip').addEventListener('click', () => { if (G.phase === 'calib') go('count'); });
 $('btnSound').addEventListener('click', e => {
