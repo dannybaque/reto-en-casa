@@ -92,6 +92,7 @@ h1 em{font-style:normal;color:var(--sun)}
 #mVolante{background:#ff9f1c}
 #mLavado{background:#b8f2e6}
 #mGlobo{background:#c8b6ff}
+#mEstatuas{background:#ffd6e0}
 .field{display:flex;flex-direction:column;gap:6px;font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
 .field input{font:800 20px var(--font-body);padding:12px 14px;border-radius:14px;border:2px solid rgba(255,246,220,.4);
   background:var(--panel);color:var(--cream);width:min(100%,320px);text-transform:none;letter-spacing:0}
@@ -171,6 +172,11 @@ td:last-child{text-align:right;font-weight:800}
         <span class="tag">Toda la familia · sin reloj</span>
         <strong>Que no caiga el globo</strong>
         <small>Golpea el globo con las manos o la cabeza para que no toque el piso. A los diez toques seguidos llega otro.</small>
+      </button>
+      <button class="mode" id="mEstatuas" type="button">
+        <span class="tag">Toda la familia · sin reloj</span>
+        <strong>Estatuas</strong>
+        <small>Con música todos bailan. Cuando se corta, hay que quedarse congelados: la cámara ve al que se mueve.</small>
       </button>
       <button class="mode" id="mVolante" type="button">
         <span class="tag">1 jugador · 60 segundos</span>
@@ -253,8 +259,10 @@ const FRUTAS = [{ id: 'frutas', name: 'Corta las frutas', tip: 'Pásales la mano
 const TELAS = [{ id: 'telas', name: 'Telarañas', tip: 'Estira el brazo para lanzar. Aplaude para limpiar', secs: Infinity, libre: true }];
 const VOLANTE = [{ id: 'volante', name: 'Maneja', tip: 'Agarra un volante imaginario y gíralo', secs: 60, libre: true }];
 const LAVADO = [{ id: 'lavado', name: 'Lavadero', tip: 'Pasa las manos para limpiar el carro', secs: Infinity, libre: true }];
+const ESTATUAS = [{ id: 'estatuas', name: 'Estatuas', tip: 'Baila con la música. Cuando pare, no te muevas', secs: Infinity, libre: true }];
+const MOTION_PTS = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26];
 const GLOBO = [{ id: 'globo', name: 'Que no caiga el globo', tip: 'Golpéalo con las manos o la cabeza', secs: Infinity, libre: true }];
-const LISTS = { rutina: RUTINA, libre: LIBRE, peque: PEQUE, frutas: FRUTAS, telas: TELAS, volante: VOLANTE, lavado: LAVADO, globo: GLOBO };
+const LISTS = { rutina: RUTINA, libre: LIBRE, peque: PEQUE, frutas: FRUTAS, telas: TELAS, volante: VOLANTE, lavado: LAVADO, globo: GLOBO, estatuas: ESTATUAS };
 const CAR_COLORS = ['#ff5d73', '#ffc93c', '#3ddc97', '#4cc9f0', '#ff9f1c'];
 const FRUITS = [
   { e: '🍉', c: '#ff5d73' }, { e: '🍊', c: '#ff9f1c' }, { e: '🍎', c: '#e63946' }, { e: '🍌', c: '#ffd60a' },
@@ -565,6 +573,43 @@ function newBalloon(now, x) {
            c: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)] };
 }
 const RUN = {
+  estatuas(now, P, s) {
+    const st = G.st;
+    if (!st.mode) { Object.assign(st, { mode: 'baila', until: now + rnd(5000, 8000), prev: [], mot: 0, tick: now, seenT: now }); say('¡A bailar!'); }
+    setPrompt(now - G.t0 < 6000 ? s.tip : '');
+    // movimiento: solo se mide cuando llega una lectura nueva de la cámara
+    if (poses !== st.seen) {
+      const dt = clamp((now - st.seenT) / 1000, 0.01, 0.3); st.seen = poses; st.seenT = now;
+      const curr = poses.map(p => ({ p, m: metrics(p) })).filter(o => o.m.ok);
+      let maxMot = 0;
+      for (const o of curr) {
+        let best = null, bd = Infinity;
+        for (const q of st.prev) { const d = Math.hypot(q.m.sh.x - o.m.sh.x, q.m.sh.y - o.m.sh.y); if (d < bd) { bd = d; best = q; } }
+        if (!best || bd > o.m.torso * 0.8) continue;
+        let sum = 0, n = 0;
+        for (const i of MOTION_PTS) { const a = o.p[i], b = best.p[i]; if (a.v < 0.5 || b.v < 0.5) continue; sum += Math.hypot(a.x - b.x, a.y - b.y); n++; }
+        if (n) maxMot = Math.max(maxMot, sum / n / o.m.torso / dt);
+      }
+      st.prev = curr;
+      st.mot += (maxMot - st.mot) * 0.3;
+    }
+    const left = st.until - now;
+    if (st.mode === 'baila') {
+      if (now - st.tick > 500) { st.tick = now; if (st.mot > 0.6) rep(P ? P.m.sh.x : W / 2, P ? P.m.sh.y - 60 : H * 0.4, 3); }
+      if (left <= 0) {
+        Object.assign(st, { mode: 'estatua', t0: now, until: now + rnd(3000, 5000), caught: false });
+        music.stop(); tone(200, 0.3, 'square', 0.15); say('¡Estatua!');
+      }
+    } else {
+      if (!st.caught) G.lastRep = now; // la racha aguanta mientras nadie se mueva
+      if (!st.caught && now - st.t0 > 700 && st.mot > 0.45) { st.caught = true; miss(); say('¡Te moviste!'); }
+      if (left <= 0) {
+        if (!st.caught) { rep(W / 2, H * 0.4, 25); say('¡Muy bien, estatuas!'); } else say('¡A bailar!');
+        Object.assign(st, { mode: 'baila', until: now + rnd(5000, 8000), tick: now });
+        music.start(false);
+      }
+    }
+  },
   globo(now, P, s) {
     const st = G.st, dt = Math.min(0.05, (now - (st.last || now)) / 1000); st.last = now;
     if (!st.bal) {
@@ -869,6 +914,7 @@ function render(now) {
   // carretera y lavadero
   const cur = G.list[G.idx];
   if (G.phase === 'play' && cur.id === 'globo' && G.st.bal) drawBalloons(now);
+  if (G.phase === 'play' && cur.id === 'estatuas' && G.st.mode) drawStatues(now);
   if (G.phase === 'play' && cur.id === 'volante' && G.st.x != null) drawRoad();
   if (G.phase === 'play' && cur.id === 'lavado' && G.st.car) drawWash(now);
 
@@ -993,6 +1039,26 @@ function roundPath(x, y, w, h, r) {
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
+function drawStatues(now) {
+  const st = G.st, frozen = st.mode === 'estatua';
+  if (frozen) {
+    ctx.fillStyle = 'rgba(76,201,240,.22)'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = st.caught ? C.coral : C.sky; ctx.lineWidth = 18; ctx.strokeRect(9, 9, W - 18, H - 18);
+  }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const size = Math.round(Math.min(W * 0.12, H * 0.2));
+  ctx.font = `800 ${size}px "Baloo 2", sans-serif`;
+  const txt = frozen ? (st.caught ? '¡Te moviste!' : '¡ESTATUA!') : '¡BAILA!';
+  const y = 110 + size * 0.6 + (frozen ? 0 : Math.sin(now / 120) * 8);
+  ctx.lineWidth = 12; ctx.strokeStyle = C.night; ctx.strokeText(txt, W / 2, y);
+  ctx.fillStyle = frozen ? (st.caught ? C.coral : C.sky) : C.mint; ctx.fillText(txt, W / 2, y);
+  // medidor de movimiento
+  const bw = Math.min(360, W * 0.5), bx = (W - bw) / 2, by = H - 40, k = clamp(st.mot / 1.2, 0, 1);
+  ctx.fillStyle = 'rgba(11,23,48,.7)'; roundPath(bx - 6, by - 6, bw + 12, 26, 13); ctx.fill();
+  ctx.fillStyle = frozen ? (st.mot > 0.45 ? C.coral : C.sky) : C.mint;
+  roundPath(bx, by, Math.max(14, bw * k), 14, 7); ctx.fill();
+  if (frozen) { ctx.fillStyle = C.cream; ctx.fillRect(bx + bw * 0.45 / 1.2, by - 4, 3, 22); }
+}
 function drawBalloons(now) {
   const st = G.st;
   // piso
@@ -1116,6 +1182,7 @@ $('mFrutas').addEventListener('click', () => start('frutas'));
 $('mTelas').addEventListener('click', () => start('telas'));
 $('mVolante').addEventListener('click', () => start('volante'));
 $('mGlobo').addEventListener('click', () => start('globo'));
+$('mEstatuas').addEventListener('click', () => start('estatuas'));
 $('mLavado').addEventListener('click', () => start('lavado'));
 function party() {
   G.bubbles = []; G.conf = [];
