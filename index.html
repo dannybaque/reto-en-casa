@@ -88,6 +88,7 @@ h1 em{font-style:normal;color:var(--sun)}
 #mLibre{background:var(--mint)}
 #mPeque{background:var(--sky)}
 #mFrutas{background:var(--coral)}
+#mTelas{background:var(--cream)}
 .field{display:flex;flex-direction:column;gap:6px;font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
 .field input{font:800 20px var(--font-body);padding:12px 14px;border-radius:14px;border:2px solid rgba(255,246,220,.4);
   background:var(--panel);color:var(--cream);width:min(100%,320px);text-transform:none;letter-spacing:0}
@@ -158,6 +159,11 @@ td:last-child{text-align:right;font-weight:800}
         <strong>Corta frutas</strong>
         <small>Las frutas saltan desde abajo. Pásales la mano por encima y se parten en dos.</small>
       </button>
+      <button class="mode" id="mTelas" type="button">
+        <span class="tag">Toda la familia · sin reloj</span>
+        <strong>Telarañas</strong>
+        <small>Estira el brazo y lanzas una telaraña a la pantalla. Cuando esté llena, aplaude y se limpia todo.</small>
+      </button>
       <button class="mode" id="mPeque" type="button">
         <span class="tag">Para los más chiquitos · sin reloj</span>
         <strong>Modo peque</strong>
@@ -226,7 +232,8 @@ const ITEMS = [
 ];
 const MEL_K = [392, 0, 440, 0, 523, 0, 440, 0, 392, 0, 330, 0, 392, 0, 0, 0];
 const FRUTAS = [{ id: 'frutas', name: 'Corta las frutas', tip: 'Pásales la mano por encima', secs: 60, libre: true }];
-const LISTS = { rutina: RUTINA, libre: LIBRE, peque: PEQUE, frutas: FRUTAS };
+const TELAS = [{ id: 'telas', name: 'Telarañas', tip: 'Estira el brazo para lanzar. Aplaude para limpiar', secs: Infinity, libre: true }];
+const LISTS = { rutina: RUTINA, libre: LIBRE, peque: PEQUE, frutas: FRUTAS, telas: TELAS };
 const FRUITS = [
   { e: '🍉', c: '#ff5d73' }, { e: '🍊', c: '#ff9f1c' }, { e: '🍎', c: '#e63946' }, { e: '🍌', c: '#ffd60a' },
   { e: '🍓', c: '#ff4d6d' }, { e: '🍍', c: '#ffc93c' }, { e: '🥝', c: '#80b918' }, { e: '🍇', c: '#9d4edd' },
@@ -241,7 +248,8 @@ let landmarker = null, camReady = false, lastVideoT = -1, poses = [];
 let sound = true, actx = null;
 const base = { hip: null, torso: 1 };
 const G = { mode: null, list: RUTINA, phase: 'menu', t0: 0, idx: 0, score: 0, combo: 0, lastRep: 0, reps: [], st: {},
-            bubbles: [], parts: [], floats: [], conf: [], fruits: [], halves: [], trail: {}, flash: 0, okSince: 0 };
+            bubbles: [], parts: [], floats: [], conf: [], fruits: [], halves: [], trail: {}, webs: [], strands: [],
+            flash: 0, okSince: 0 };
 
 /* ---------- utilidades ---------- */
 function fit() {
@@ -377,7 +385,7 @@ async function start(mode) {
   const name = $('playerName').value.trim() || 'Jugador';
   try { localStorage.setItem('retoencasa.player', name); } catch (e) {}
   Object.assign(G, { mode, player: name, list: LISTS[mode], idx: 0, score: 0, combo: 0, lastRep: 0,
-                     st: {}, bubbles: [], parts: [], floats: [], conf: [], fruits: [], halves: [], trail: {}, okSince: 0 });
+                     st: {}, bubbles: [], parts: [], floats: [], conf: [], fruits: [], halves: [], trail: {}, webs: [], strands: [], okSince: 0 });
   $('btnQuit').textContent = mode === 'peque' ? 'Terminar' : 'Salir';
   music.start(mode === 'peque');
   G.reps = G.list.map(() => 0);
@@ -499,7 +507,50 @@ function slice(f, now) {
   burst(f.x, f.y, f.c, 20);
   tone(1100, 0.07, 'sawtooth', 0.07);
 }
+function elbowAngle(a, b, c) {
+  const v1x = a.x - b.x, v1y = a.y - b.y, v2x = c.x - b.x, v2y = c.y - b.y;
+  const d = (Math.hypot(v1x, v1y) * Math.hypot(v2x, v2y)) || 1;
+  return Math.acos(clamp((v1x * v2x + v1y * v2y) / d, -1, 1)) * 180 / Math.PI;
+}
+function shootWeb(hand, ux, uy, torso, now) {
+  const d = rnd(1.6, 3.4) * torso;
+  const x = clamp(hand.x + ux * d, 60, W - 60), y = clamp(hand.y + uy * d, 130, H - 60);
+  const R = rnd(0.11, 0.19) * Math.min(W, H);
+  const spokes = Array.from({ length: 8 }, (_, i) => ({ a: i * Math.PI / 4 + rnd(-0.15, 0.15), l: R * rnd(0.8, 1.1) }));
+  G.webs.push({ x, y, spokes, t0: now });
+  G.strands.push({ x0: hand.x, y0: hand.y, x1: x, y1: y, t0: now });
+  rep(x, y, 5);
+  tone(1500, 0.05, 'sine', 0.1); setTimeout(() => tone(700, 0.12, 'triangle', 0.08), 50);
+}
+function clearWebs(now) {
+  for (const w of G.webs) if (!w.gone) { w.gone = now; burst(w.x, w.y, C.cream, 10); }
+  [900, 700, 500, 350].forEach((f, i) => setTimeout(() => tone(f, 0.1, 'sine', 0.12), i * 70));
+  sayParts([['¡Limpio!', 'es-US']]);
+}
 const RUN = {
+  telas(now, P, s) {
+    const st = G.st; st.h = st.h || {};
+    setPrompt(now - G.t0 < 7000 ? s.tip : '');
+    const live = G.webs.filter(w => !w.gone).length;
+    poses.forEach((p, pi) => {
+      const torso = metrics(p).torso, l = p[15], r = p[16];
+      const together = l.v > 0.5 && r.v > 0.5 && Math.hypot(l.x - r.x, l.y - r.y) < torso * 0.45;
+      if (together) {
+        if (live && now - (st.clr || 0) > 1500) { st.clr = now; st.full = false; clearWebs(now); }
+        return;
+      }
+      for (const [sh, el, wr] of [[11, 13, 15], [12, 14, 16]]) {
+        const S = p[sh], E = p[el], Wp = p[wr], key = pi + '-' + wr;
+        if (Math.min(S.v, E.v, Wp.v) < 0.5) continue;
+        const dx = Wp.x - E.x, dy = Wp.y - E.y, len = Math.hypot(dx, dy) || 1;
+        const ang = elbowAngle(S, E, Wp), down = dy / len > 0.75;
+        if (ang > 150 && !down) {
+          if (!st.h[key] && live < 40 && now - (st.clr || 0) > 600) { st.h[key] = true; shootWeb(Wp, dx / len, dy / len, torso, now); }
+        } else if (ang < 130 || down) st.h[key] = false;
+      }
+    });
+    if (live >= 12 && !st.full) { st.full = true; say('¡Pantalla llena! Aplaude para limpiar'); }
+  },
   frutas(now, P, s) {
     const st = G.st, dt = Math.min(0.05, (now - (st.last || now)) / 1000); st.last = now;
     if (now > (st.next || 0)) {
@@ -675,6 +726,38 @@ function render(now) {
     }
   }
 
+  // telarañas
+  if (G.webs.length || G.strands.length) {
+    G.webs = G.webs.filter(w => !w.gone || now - w.gone < 500);
+    G.strands = G.strands.filter(q => now - q.t0 < 380);
+    ctx.lineJoin = 'round';
+    for (const w of G.webs) {
+      const k = Math.min(1, (now - w.t0) / 260);
+      let a = 0.95, oy = 0;
+      if (w.gone) { const g = (now - w.gone) / 500; a *= 1 - g; oy = g * g * 140; }
+      const cy0 = w.y + oy, pts = w.spokes.map(sp => ({ ax: Math.cos(sp.a), ay: Math.sin(sp.a), l: sp.l * k }));
+      ctx.beginPath();
+      for (const q of pts) { ctx.moveTo(w.x, cy0); ctx.lineTo(w.x + q.ax * q.l, cy0 + q.ay * q.l); }
+      for (let ring = 1; ring <= 4; ring++) {
+        const f = ring / 4.4;
+        for (let i = 0; i < pts.length; i++) {
+          const A = pts[i], B = pts[(i + 1) % pts.length];
+          const x1 = w.x + A.ax * A.l * f, y1 = cy0 + A.ay * A.l * f, x2 = w.x + B.ax * B.l * f, y2 = cy0 + B.ay * B.l * f;
+          const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+          ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx + (w.x - mx) * 0.22, my + (cy0 - my) * 0.22, x2, y2);
+        }
+      }
+      ctx.globalAlpha = Math.max(0, a * 0.4); ctx.strokeStyle = C.night; ctx.lineWidth = 7; ctx.stroke();
+      ctx.globalAlpha = Math.max(0, a); ctx.strokeStyle = C.cream; ctx.lineWidth = 3; ctx.stroke();
+    }
+    for (const q of G.strands) {
+      const t = now - q.t0, k = Math.min(1, t / 150);
+      ctx.globalAlpha = Math.max(0, 1 - t / 380); ctx.strokeStyle = C.cream; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(q.x0, q.y0); ctx.lineTo(q.x0 + (q.x1 - q.x0) * k, q.y0 + (q.y1 - q.y0) * k); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   // frutas: estela de las manos, frutas enteras y mitades
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   if (G.fruits.length || G.halves.length) {
@@ -779,6 +862,7 @@ $('btnAgain').addEventListener('click', () => start(G.mode));
 $('btnMenu').addEventListener('click', quit);
 $('mPeque').addEventListener('click', () => start('peque'));
 $('mFrutas').addEventListener('click', () => start('frutas'));
+$('mTelas').addEventListener('click', () => start('telas'));
 function party() {
   G.bubbles = []; G.conf = [];
   const name = G.player && G.player !== 'Jugador' ? G.player : '';
