@@ -93,10 +93,20 @@ h1 em{font-style:normal;color:var(--sun)}
 #mTele{font-size:clamp(20px,3vw,28px);padding:20px 26px;border-radius:22px;text-align:left;display:flex;flex-direction:column;gap:4px;width:100%}
 #mTele small{font:600 15px var(--font-body)}
 #endAuto{margin:0;font-weight:800;color:var(--sky);min-height:1.4em}
+#mVolante{background:#ff9f1c}
+#mLavado{background:#b8f2e6}
+#mGlobo{background:#c8b6ff}
+#mEstatuas{background:#ffd6e0}
 .field{display:flex;flex-direction:column;gap:6px;font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
 .field input{font:800 20px var(--font-body);padding:12px 14px;border-radius:14px;border:2px solid rgba(255,246,220,.4);
   background:var(--panel);color:var(--cream);width:min(100%,320px);text-transform:none;letter-spacing:0}
 h2{font-family:var(--font-display);font-weight:800;font-size:26px;margin:0}
+.train{background:var(--panel);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:14px;border:2px solid rgba(255,201,60,.5)}
+.train p{margin:0;max-width:62ch}
+.train .row{align-items:flex-end}
+.field select{font:800 18px var(--font-body);padding:12px 14px;border-radius:14px;border:2px solid rgba(255,246,220,.4);
+  background:var(--night);color:var(--cream);text-transform:none;letter-spacing:0}
+#histLine{color:var(--mint);font-weight:800;min-height:1.3em}
 .tables{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
 .tables section{display:flex;flex-direction:column;gap:8px}
 tr.me td{color:var(--sun)}
@@ -134,6 +144,7 @@ td:last-child{text-align:right;font-weight:800}
   <div class="stat"><b id="hudReps">0</b><span>Repeticiones</span></div>
   <div class="stat"><b id="hudCombo">x0</b><span>Racha</span></div>
   <div class="stat"><b id="hudScore">0</b><span>Puntos</span></div>
+  <button class="icon-btn" id="btnPause" type="button" hidden>Pausa</button>
   <button class="icon-btn" id="btnQuit" type="button">Salir</button>
 </div>
 <div id="big"></div>
@@ -148,8 +159,28 @@ td:last-child{text-align:right;font-weight:800}
       <input id="playerName" type="text" maxlength="14" placeholder="Tu nombre" autocomplete="off">
     </label>
     <button class="cta" id="mTele" type="button">Jugar desde la tele
-      <small>Deja el teléfono apoyado y elige cada juego levantando la mano, sin tocar la pantalla.</small>
+      <small>Apoya el teléfono y elige cada juego con la mano: palma abierta para mover, puño para elegir.</small>
     </button>
+    <section class="train" aria-labelledby="trainH">
+      <h2 id="trainH">Entrenamiento</h2>
+      <p>Cardio, baile y tonificación en bloques de 40 segundos con 15 de descanso. Incluye calentamiento, pausas para tomar agua y estiramiento al final. La cámara cuenta las repeticiones.</p>
+      <div class="row">
+        <label class="field" for="wMin">Duración
+          <select id="wMin">
+            <option value="10">10 minutos</option><option value="20">20 minutos</option>
+            <option value="30">30 minutos</option><option value="40" selected>40 minutos</option>
+          </select>
+        </label>
+        <label class="field" for="wFocus">Enfoque
+          <select id="wFocus">
+            <option value="mixto" selected>Cardio, baile y tonificar</option><option value="cardio">Más cardio</option>
+            <option value="tono">Más tonificar</option><option value="baile">Más baile</option>
+          </select>
+        </label>
+        <button class="cta" id="mEntreno" type="button">Empezar entrenamiento</button>
+      </div>
+      <p id="histLine" role="status"></p>
+    </section>
     <div class="modes">
       <button class="mode" id="mRutina" type="button">
         <span class="ico" aria-hidden="true">🏃</span>
@@ -158,7 +189,7 @@ td:last-child{text-align:right;font-weight:800}
         <small>Seis retos seguidos: burbujas, saltos, muro, sentadillas, rodillas arriba y manos al cielo.</small>
       </button>
       <button class="mode" id="mLibre" type="button">
-        <span class="ico" aria-hidden="true">🎈</span>
+        <span class="ico" aria-hidden="true">🫧</span>
         <span class="tag">Toda la familia · 75 segundos</span>
         <strong>Burbujas libres</strong>
         <small>Hasta tres personas a la vez. Solo hay que tocar las burbujas con las manos.</small>
@@ -174,6 +205,30 @@ td:last-child{text-align:right;font-weight:800}
         <span class="tag">Toda la familia · sin reloj</span>
         <strong>Telarañas</strong>
         <small>Estira el brazo y lanzas una telaraña a la pantalla. Cuando esté llena, aplaude y se limpia todo.</small>
+      </button>
+      <button class="mode" id="mGlobo" type="button">
+        <span class="ico" aria-hidden="true">🎈</span>
+        <span class="tag">Toda la familia · sin reloj</span>
+        <strong>Que no caiga el globo</strong>
+        <small>Golpea el globo con las manos o la cabeza para que no toque el piso. A los diez toques seguidos llega otro.</small>
+      </button>
+      <button class="mode" id="mEstatuas" type="button">
+        <span class="ico" aria-hidden="true">🧊</span>
+        <span class="tag">Toda la familia · sin reloj</span>
+        <strong>Estatuas</strong>
+        <small>Con música todos bailan. Cuando se corta, hay que quedarse congelados: la cámara ve al que se mueve.</small>
+      </button>
+      <button class="mode" id="mVolante" type="button">
+        <span class="ico" aria-hidden="true">🚗</span>
+        <span class="tag">1 jugador · 60 segundos</span>
+        <strong>Maneja</strong>
+        <small>Agarra un volante imaginario y gíralo. Esquiva los conos y recoge las estrellas.</small>
+      </button>
+      <button class="mode" id="mLavado" type="button">
+        <span class="ico" aria-hidden="true">🧽</span>
+        <span class="tag">Toda la familia · sin reloj</span>
+        <strong>Lavadero</strong>
+        <small>Llega un carro lleno de lodo. Pasa las manos como esponjas hasta que quede limpio y salga pitando.</small>
       </button>
       <button class="mode" id="mPeque" type="button">
         <span class="ico" aria-hidden="true">🐶</span>
@@ -246,7 +301,79 @@ const ITEMS = [
 const MEL_K = [392, 0, 440, 0, 523, 0, 440, 0, 392, 0, 330, 0, 392, 0, 0, 0];
 const FRUTAS = [{ id: 'frutas', name: 'Corta las frutas', tip: 'Pásales la mano por encima', secs: 60, libre: true }];
 const TELAS = [{ id: 'telas', name: 'Telarañas', tip: 'Estira el brazo para lanzar. Aplaude para limpiar', secs: Infinity, libre: true }];
-const LISTS = { rutina: RUTINA, libre: LIBRE, peque: PEQUE, frutas: FRUTAS, telas: TELAS };
+const VOLANTE = [{ id: 'volante', name: 'Maneja', tip: 'Agarra un volante imaginario y gíralo', secs: 60, libre: true }];
+const LAVADO = [{ id: 'lavado', name: 'Lavadero', tip: 'Pasa las manos para limpiar el carro', secs: Infinity, libre: true }];
+/* WK-START */
+const EX = {
+  calienta:    { run: 'marcha', name: 'Calentamiento: marcha suave', tip: 'Marcha en el sitio a ritmo cómodo' },
+  calienta2:   { run: 'brazos', name: 'Calentamiento: brazos', tip: 'Sube y baja los dos brazos' },
+  jacks:       { name: 'Jumping jacks', tip: 'Abre piernas y sube los brazos a la vez' },
+  skipping:    { run: 'marcha', name: 'Skipping', tip: 'Rodillas arriba, rápido' },
+  saltos:      { name: 'Saltos', tip: 'Despega los pies del piso' },
+  box:         { name: 'Box', tip: 'Golpea los blancos alternando manos' },
+  frutas:      { name: 'Corta las frutas', tip: 'Pásales la mano por encima' },
+  sentadillas: { name: 'Sentadillas', tip: 'Baja la cadera y vuelve a subir' },
+  zancadas:    { name: 'Zancadas', tip: 'Un paso atrás y baja, alternando piernas' },
+  hold:        { name: 'Sentadilla sostenida', tip: 'Baja y aguanta abajo' },
+  cruzado:     { name: 'Rodilla al codo', tip: 'Codo y rodilla contraria se encuentran' },
+  pierna:      { name: 'Pierna al lado', tip: 'Eleva una pierna al costado, alternando' },
+  brazos:      { name: 'Manos al cielo', tip: 'Sube y baja los dos brazos' },
+  baile:       { name: 'Baile libre', tip: 'Sigue el paso que aparece en pantalla' },
+  estatuas:    { name: 'Baile y estatuas', tip: 'Baila; cuando pare la música, congélate' },
+  estira:      { name: 'Estiramiento', tip: 'Sigue las indicaciones y respira' },
+};
+const POOL = {
+  cardio: ['jacks', 'box', 'skipping', 'saltos', 'frutas'],
+  tono: ['sentadillas', 'cruzado', 'zancadas', 'pierna', 'hold', 'brazos'],
+  baile: ['baile', 'estatuas', 'baile'],
+};
+const PATTERN = {
+  mixto: ['cardio', 'tono', 'baile'],
+  cardio: ['cardio', 'cardio', 'tono', 'cardio', 'baile'],
+  tono: ['tono', 'tono', 'cardio', 'tono', 'baile'],
+  baile: ['baile', 'cardio', 'baile', 'tono'],
+};
+function buildWorkout(min, focus) {
+  const WORK = 40, REST = 15;
+  const mk = (key, secs, rest, extra) => ({ id: EX[key].run || key, name: EX[key].name, tip: EX[key].tip, secs, rest: rest * 1000, libre: true, ...extra });
+  const list = [mk('calienta', 40, 5), mk('calienta2', 30, 5)];
+  const cool = [mk('estira', 45, 3, { off: 0 }), mk('estira', 45, 0, { off: 3 })];
+  let budget = min * 60 - 80 - 93, i = 0, sinceWater = 0;
+  const idx = { cardio: 0, tono: 0, baile: 0 }, pat = PATTERN[focus] || PATTERN.mixto;
+  while (budget >= WORK + REST) {
+    const cat = pat[i % pat.length], key = POOL[cat][idx[cat]++ % POOL[cat].length];
+    sinceWater += WORK + REST;
+    let rest = REST, water = false;
+    if (sinceWater >= 600 && budget >= 2 * WORK + 45 + REST) { rest = 45; water = true; sinceWater = 0; }
+    list.push(mk(key, WORK, rest, { water }));
+    budget -= WORK + rest; i++;
+  }
+  return list.concat(cool);
+}
+/* WK-END */
+const MOVES = ['Paso lateral', 'Brazos arriba', 'Mueve la cadera', 'Aplaude y gira', 'Rodillas suaves', 'Puños al frente', 'Paso cruzado', 'Salta suave'];
+const STRETCH = ['Brazos arriba y respira hondo', 'Inclínate a la derecha', 'Inclínate a la izquierda',
+                 'Baja a tocar tus pies, sin rebotar', 'Rota los hombros hacia atrás', 'Sacude brazos y piernas'];
+function loadHist() {
+  try { const h = JSON.parse(localStorage.getItem('retoencasa.hist')) || []; return Array.isArray(h) ? h : []; } catch (e) { return []; }
+}
+function histSummary(h) {
+  const now = Date.now(), day = 86400000, week = h.filter(e => now - e.t < 7 * day);
+  const days = new Set(h.map(e => new Date(e.t).toDateString()));
+  let streak = 0;
+  for (let d = new Date(); days.has(d.toDateString()); d = new Date(d.getTime() - day)) streak++;
+  return { n: week.length, mins: week.reduce((a, e) => a + e.min, 0), streak };
+}
+function histText(h) {
+  if (!h.length) return '';
+  const q = histSummary(h);
+  return `Últimos 7 días: ${q.n} ${q.n === 1 ? 'entrenamiento' : 'entrenamientos'}, ${q.mins} minutos. Racha: ${q.streak} ${q.streak === 1 ? 'día' : 'días'}.`;
+}
+const ESTATUAS = [{ id: 'estatuas', name: 'Estatuas', tip: 'Baila con la música. Cuando pare, no te muevas', secs: Infinity, libre: true }];
+const MOTION_PTS = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26];
+const GLOBO = [{ id: 'globo', name: 'Que no caiga el globo', tip: 'Golpéalo con las manos o la cabeza', secs: Infinity, libre: true }];
+const LISTS = { rutina: RUTINA, libre: LIBRE, peque: PEQUE, frutas: FRUTAS, telas: TELAS, volante: VOLANTE, lavado: LAVADO, globo: GLOBO, estatuas: ESTATUAS };
+const CAR_COLORS = ['#ff5d73', '#ffc93c', '#3ddc97', '#4cc9f0', '#ff9f1c'];
 const FRUITS = [
   { e: '🍉', c: '#ff5d73' }, { e: '🍊', c: '#ff9f1c' }, { e: '🍎', c: '#e63946' }, { e: '🍌', c: '#ffd60a' },
   { e: '🍓', c: '#ff4d6d' }, { e: '🍍', c: '#ffc93c' }, { e: '🥝', c: '#80b918' }, { e: '🍇', c: '#9d4edd' },
@@ -258,16 +385,22 @@ const BASS = [131, 131, 175, 196];
 
 let W = 0, H = 0, dpr = 1, T = { ox: 0, oy: 0, dw: 1, dh: 1 };
 let landmarker = null, camReady = false, lastVideoT = -1, poses = [];
-let sound = true, actx = null, handsFree = false;
+let sound = true, actx = null, handsFree = false, gesture = null, hands = [];
+const GESTURE_URL = 'https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/gesture_recognizer.task';
 const TILES = [
-  { mode: 'rutina', label: 'Rutina', icon: '🏃', c: C.sun },
+  { mode: 'entreno', label: 'Entrenar', icon: '💪', c: C.sun },
+  { mode: 'rutina', label: 'Rutina corta', icon: '🏃', c: '#ffe08a' },
   { mode: 'frutas', label: 'Frutas', icon: '🍉', c: C.coral },
   { mode: 'telas', label: 'Telarañas', icon: '🕸️', c: C.cream },
-  { mode: 'libre', label: 'Burbujas', icon: '🎈', c: C.mint },
+  { mode: 'globo', label: 'Globo', icon: '🎈', c: '#c8b6ff' },
+  { mode: 'estatuas', label: 'Estatuas', icon: '🧊', c: '#ffd6e0' },
+  { mode: 'volante', label: 'Maneja', icon: '🚗', c: '#ff9f1c' },
+  { mode: 'lavado', label: 'Lavadero', icon: '🧽', c: '#b8f2e6' },
+  { mode: 'libre', label: 'Burbujas', icon: '🫧', c: C.mint },
   { mode: 'peque', label: 'Peque', icon: '🐶', c: C.sky },
   { mode: null, label: 'Inicio', icon: '🏠', c: '#9fb3d9' },
 ];
-const DWELL = 1500;
+const FIST_MS = 250, DWELL_MS = 3500, EXIT_MS = 1500;
 const base = { hip: null, torso: 1 };
 const G = { mode: null, list: RUTINA, phase: 'menu', t0: 0, idx: 0, score: 0, combo: 0, lastRep: 0, reps: [], st: {},
             bubbles: [], parts: [], floats: [], conf: [], fruits: [], halves: [], trail: {}, webs: [], strands: [],
@@ -402,14 +535,18 @@ async function start(mode) {
     await initCamera();
     setStatus('Cargando el detector de movimiento…');
     await initModel();
-    await landmarker.setOptions({ numPoses: mode === 'rutina' ? 1 : 3 });
+    await landmarker.setOptions({ numPoses: ['rutina', 'volante', 'entreno'].includes(mode) ? 1 : 3 });
   } catch (err) { console.error(err); setStatus(explain(err), true); return; }
   setStatus('');
   const name = $('playerName').value.trim() || 'Jugador';
   try { localStorage.setItem('retoencasa.player', name); } catch (e) {}
-  Object.assign(G, { mode, player: name, list: LISTS[mode], idx: 0, score: 0, combo: 0, lastRep: 0,
+  const wMin = Number($('wMin').value) || 20, wFocus = $('wFocus').value;
+  Object.assign(G, { mode, player: name, list: mode === 'entreno' ? buildWorkout(wMin, wFocus) : LISTS[mode], idx: 0,
+                     wMin, wFocus, wStart: 0, paused: 0, pausedTotal: 0, restMs: 3500, restWater: false, score: 0, combo: 0, lastRep: 0,
                      st: {}, bubbles: [], parts: [], floats: [], conf: [], fruits: [], halves: [], trail: {}, webs: [], strands: [], okSince: 0 });
-  $('btnQuit').textContent = mode === 'peque' ? 'Terminar' : 'Salir';
+  $('btnQuit').textContent = mode === 'peque' || mode === 'entreno' ? 'Terminar' : 'Salir';
+  $('btnPause').hidden = mode !== 'entreno'; $('btnPause').textContent = 'Pausa';
+  G.wTotal = G.list.reduce((a, q) => a + q.secs + (q.rest || 0) / 1000, 0);
   music.start(mode === 'peque');
   G.reps = G.list.map(() => 0);
   base.hip = null;
@@ -421,13 +558,20 @@ function beginStation() {
   const s = G.list[G.idx];
   G.st = {}; G.bubbles = []; G.fruits = []; G.trail = {};
   $('skip').classList.remove('on'); setPrompt(''); setBig('');
+  if (G.mode === 'entreno' && !G.wStart) G.wStart = performance.now();
+  music.start(G.mode === 'peque'); // por si un bloque de estatuas terminó con la música cortada
   say(s.name); beep(880, 0.15);
   hud(true); go('play');
 }
 function endStation() {
   beep(660, 0.12); beep(990, 0.2);
   G.bubbles = []; G.fruits = []; G.trail = {}; G.st = {};
-  if (G.idx + 1 < G.list.length) { G.idx++; hud(true); go('rest'); }
+  if (G.idx + 1 < G.list.length) {
+    const done = G.list[G.idx];
+    G.restMs = done.rest ?? 3500; G.restWater = !!done.water;
+    G.idx++; hud(true); go('rest');
+    if (G.mode === 'entreno' && G.restMs > 5000) say(`${G.restWater ? 'Toma agua' : 'Descansa'}. Sigue: ${G.list[G.idx].name}`);
+  }
   else finish();
 }
 function finish() {
@@ -455,36 +599,54 @@ function finish() {
       tr.insertCell().textContent = a; tr.insertCell().textContent = b;
     }
   };
-  rows($('endTable'), G.list.map((s, i) => [s.name, G.reps[i], false]));
+  const agg = new Map();
+  G.list.forEach((q, i) => agg.set(q.name, (agg.get(q.name) || 0) + (G.reps[i] || 0)));
+  rows($('endTable'), [...agg].filter(([, n]) => n > 0 || G.mode !== 'entreno').map(([n, v]) => [n, v, false]));
+  if (G.mode === 'entreno') {
+    const mins = Math.max(1, Math.round((performance.now() - (G.wStart || performance.now()) - G.pausedTotal) / 60000));
+    const hist = loadHist(); hist.push({ t: Date.now(), min: mins, focus: G.wFocus, reps: G.reps.reduce((a, b) => a + b, 0), score: G.score });
+    try { localStorage.setItem('retoencasa.hist', JSON.stringify(hist.slice(-90))); } catch (e) {}
+    $('endTitle').textContent = G.idx >= G.list.length - 1 ? '¡Entrenamiento completo!' : 'Entrenamiento guardado';
+    $('endBest').textContent = `${mins} minutos hoy. ${histText(hist)}`;
+    $('histLine').textContent = histText(hist);
+    $('btnPause').hidden = true;
+  }
   $('boardBox').style.display = peque ? 'none' : '';
   rows($('endBoard'), board.map((e, i) => [`${i + 1}. ${e.n}`, e.s, e === entry]));
-  say(peque ? `¡Atrapaste ${G.reps[0]}!` : `${G.player}, terminaste con ${G.score} puntos`);
+  say(peque ? `¡Atrapaste ${G.reps[0]}!` : G.mode === 'entreno' ? `¡Buen trabajo, ${G.player}! Entrenamiento guardado` : `${G.player}, terminaste con ${G.score} puntos`);
   show('end');
 }
 function tileRects() {
-  const top = 64, bottom = 44, pad = 14, cols = 3, rows = 2;
+  const top = 64, bottom = 44, pad = 12, cols = 4, rows = 3;
   const w = (W - pad * (cols + 1)) / cols, h = (H - top - bottom - pad * (rows - 1)) / rows;
   return TILES.map((t, i) => ({ x: pad + (i % cols) * (w + pad), y: top + Math.floor(i / cols) * (h + pad), w, h }));
+}
+async function initGesture() {
+  if (gesture) return;
+  const { GestureRecognizer, FilesetResolver } = await import(`${MP_BASE}/vision_bundle.mjs`);
+  const files = await FilesetResolver.forVisionTasks(`${MP_BASE}/wasm`);
+  const make = delegate => GestureRecognizer.createFromOptions(files, {
+    baseOptions: { modelAssetPath: GESTURE_URL, delegate }, runningMode: 'VIDEO', numHands: 2,
+  });
+  try { gesture = await make('GPU'); } catch (e) { gesture = await make('CPU'); }
 }
 async function enterPick() {
   try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch (e) {}
   keepAwake(true);
-  if (!camReady || !landmarker) setStatus('Encendiendo la cámara…');
-  try {
-    await initCamera();
-    if (!landmarker) setStatus('Cargando el detector de movimiento…');
-    await initModel();
-    await landmarker.setOptions({ numPoses: 1 });
-  } catch (err) { console.error(err); setStatus(explain(err), true); return; }
-  setStatus(''); music.stop(); handsFree = true;
-  Object.assign(G, { bubbles: [], fruits: [], halves: [], webs: [], strands: [], conf: [], trail: {}, floats: [], parts: [],
-                     pick: { x: null, y: null, hover: -1, t0: 0 }, exitT0: 0, endAuto: 0 });
+  if (!camReady || !landmarker || !gesture) setStatus('Encendiendo la cámara y cargando el detector de manos…');
+  try { await initCamera(); await initModel(); await initGesture(); }
+  catch (err) { console.error(err); setStatus(explain(err), true); return; }
+  setStatus(''); music.stop(); handsFree = true; poses = []; hands = [];
+  Object.assign(G, { bubbles: [], fruits: [], halves: [], webs: [], strands: [], conf: [], trail: {}, floats: [], parts: [], paused: 0,
+                     pick: { x: null, y: null, hover: -1, t0: 0, src: null, anchor: null, acc: null, seenT: 0, last: 0, fistT: 0, fist: false, fresh: false },
+                     exitT0: 0, endAuto: 0 });
   show(null); $('hud').classList.remove('on'); $('skip').classList.remove('on'); setPrompt(''); setBig('');
   fit(); calcT(); go('pick');
-  say('Elige un juego con la mano');
+  say('Muestra la palma abierta para elegir');
 }
 function choose(tile) {
   beep(880, 0.15);
+  hands = []; go('loading'); // evita elegir dos veces mientras arranca el juego
   if (tile.mode) start(tile.mode);
   else { handsFree = false; quit(); }
 }
@@ -530,7 +692,7 @@ function updateBase(m) {
   if (!m.ok) return;
   if (base.hip == null) { base.hip = m.hip.y; base.torso = m.torso; return; }
   const d = Math.abs(m.hip.y - base.hip) / base.torso;
-  base.hip += (m.hip.y - base.hip) * (d < 0.1 ? 0.05 : 0.004);
+  base.hip += (m.hip.y - base.hip) * (d < 0.1 ? 0.05 : G.st.noDrift ? 0 : 0.004);
   base.torso += (m.torso - base.torso) * 0.02;
 }
 
@@ -580,7 +742,251 @@ function clearWebs(now) {
   [900, 700, 500, 350].forEach((f, i) => setTimeout(() => tone(f, 0.1, 'sine', 0.12), i * 70));
   sayParts([['¡Limpio!', 'es-US']]);
 }
+const roadEdges = () => ({ L: W * 0.2, R: W * 0.8, cw: clamp(W * 0.07, 50, 90), carY: H * 0.78 });
+const washGeom = () => { const cw = Math.min(W * 0.62, H * 1.1); return { cw, ch: cw * 0.42, cy: H * 0.56 }; };
+function newCar(now) {
+  const spots = [];
+  while (spots.length < 24) {
+    const u = rnd(-0.44, 0.44), v = rnd(-0.38, 0.3);
+    if (v < -0.08 && Math.abs(u) > 0.2) continue; // arriba solo hay cabina en el centro
+    spots.push({ u, v, r: rnd(0.035, 0.06), k: rnd(0, 6) });
+  }
+  return { c: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)], phase: 'in', t0: now, spots };
+}
+function newBalloon(now, x) {
+  return { x: x ?? W / 2, y: 150, vx: rnd(-40, 40), vy: 0, r: clamp(Math.min(W, H) * 0.09, 44, 96), hitAt: 0, born: now,
+           c: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)] };
+}
+function trackMotion(st, now) {
+  if (st.mot == null) Object.assign(st, { mot: 0, prev: [], seenT: now });
+  if (poses === st.seen) return;
+  const dt = clamp((now - st.seenT) / 1000, 0.01, 0.3); st.seen = poses; st.seenT = now;
+  const curr = poses.map(p => ({ p, m: metrics(p) })).filter(o => o.m.ok);
+  let maxMot = 0;
+  for (const o of curr) {
+    let best = null, bd = Infinity;
+    for (const q of st.prev) { const d = Math.hypot(q.m.sh.x - o.m.sh.x, q.m.sh.y - o.m.sh.y); if (d < bd) { bd = d; best = q; } }
+    if (!best || bd > o.m.torso * 0.8) continue;
+    let sum = 0, n = 0;
+    for (const i of MOTION_PTS) { const a = o.p[i], b = best.p[i]; if (a.v < 0.5 || b.v < 0.5) continue; sum += Math.hypot(a.x - b.x, a.y - b.y); n++; }
+    if (n) maxMot = Math.max(maxMot, sum / n / o.m.torso / dt);
+  }
+  st.prev = curr;
+  st.mot += (maxMot - st.mot) * 0.3;
+}
 const RUN = {
+  jacks(now, P) {
+    if (!P || !P.m.ok) return;
+    const p = P.p, st = G.st, t = P.m.torso, hipW = Math.max(1, Math.abs(p[23].x - p[24].x));
+    const up = p[15].y < P.m.sh.y - 0.1 * t && p[16].y < P.m.sh.y - 0.1 * t;
+    const down = p[15].y > P.m.sh.y + 0.3 * t && p[16].y > P.m.sh.y + 0.3 * t;
+    const feet = p[27].v > 0.4 && p[28].v > 0.4, spread = Math.abs(p[27].x - p[28].x) / hipW;
+    if (!st.open && up && (!feet || spread > 1.7)) { st.open = true; rep(P.m.sh.x, p[0].y - 60); }
+    else if (st.open && down && (!feet || spread < 1.5)) st.open = false;
+  },
+  zancadas(now, P) {
+    if (!P || !P.m.ok) return;
+    const st = G.st, p = P.p; st.noDrift = true;
+    const drop = (P.m.hip.y - base.hip) / base.torso, diff = Math.abs(p[25].y - p[26].y) / base.torso;
+    if (!st.down && drop > 0.16 && diff > 0.18) st.down = true;
+    else if (st.down && drop < 0.07) { st.down = false; rep(P.m.sh.x, P.m.sh.y - 40, 15); }
+  },
+  hold(now, P) {
+    const st = G.st, dt = Math.min(0.1, (now - (st.last || now)) / 1000); st.last = now; st.noDrift = true;
+    if (!P || !P.m.ok) return;
+    const low = (P.m.hip.y - base.hip) / base.torso > 0.24;
+    setPrompt(low ? '¡Aguanta ahí!' : 'Baja la cadera y aguanta');
+    if (!low) return;
+    st.acc = (st.acc || 0) + dt;
+    if (st.acc >= 1) { st.acc -= 1; rep(P.m.sh.x, P.m.sh.y - 40, 8); }
+  },
+  cruzado(now, P) {
+    if (!P || !P.m.ok) return;
+    const st = G.st, p = P.p;
+    for (const [side, el, kn] of [['A', 13, 26], ['B', 14, 25]]) {
+      if (p[el].v < 0.4 || p[kn].v < 0.4) continue;
+      const d = Math.hypot(p[el].x - p[kn].x, p[el].y - p[kn].y) / base.torso;
+      if (!st[side] && d < 0.5) { st[side] = true; rep(p[kn].x, p[kn].y - 30, 8); }
+      else if (st[side] && d > 0.8) st[side] = false;
+    }
+  },
+  pierna(now, P) {
+    if (!P || !P.m.ok) return;
+    const st = G.st, p = P.p;
+    for (const [side, hp, an] of [['L', 23, 27], ['R', 24, 28]]) {
+      if (p[an].v < 0.4) continue;
+      const ang = Math.atan2(Math.abs(p[an].x - p[hp].x), Math.max(1, p[an].y - p[hp].y)) * 180 / Math.PI;
+      if (!st[side] && ang > 28) { st[side] = true; rep(p[an].x, p[an].y - 30, 8); }
+      else if (st[side] && ang < 14) st[side] = false;
+    }
+  },
+  box(now, P) {
+    if (!P || !P.m.ok) return;
+    const st = G.st, t = P.m.torso;
+    if (!st.tg || now - st.tg.born > 1600) {
+      if (st.tg) G.combo = 0;
+      st.side = -(st.side || 1);
+      const high = Math.random() < 0.3;
+      st.tg = { x: clamp(P.m.sh.x + st.side * rnd(1.0, 1.5) * t, 50, W - 50), y: Math.max(130, P.m.sh.y + (high ? -0.7 : rnd(-0.1, 0.3)) * t),
+                r: clamp(t * 0.3, 30, 60), born: now };
+    }
+    if (now - st.tg.born < 120) return;
+    for (const i of [15, 16, 19, 20]) {
+      const h = P.p[i]; if (h.v < 0.4) continue;
+      if (Math.hypot(h.x - st.tg.x, h.y - st.tg.y) < st.tg.r + 16) { burst(st.tg.x, st.tg.y, C.coral, 12); rep(st.tg.x, st.tg.y, 8); st.tg = null; break; }
+    }
+  },
+  baile(now, P) {
+    const st = G.st; trackMotion(st, now);
+    const i = Math.floor((now - G.t0) / 8000);
+    if (st.i !== i) { st.i = i; st.txt = MOVES[(i + G.idx) % MOVES.length]; st.tick = now; say(st.txt); }
+    if (now - st.tick > 500) { st.tick = now; if (st.mot > 0.6) rep(P ? P.m.sh.x : W / 2, P ? P.m.sh.y - 60 : H * 0.4, 3); }
+  },
+  estira(now, P, s) {
+    const st = G.st, i = Math.floor((now - G.t0) / (s.secs * 1000 / 3)) + (s.off || 0);
+    if (st.i !== i) { st.i = i; st.txt = STRETCH[i % STRETCH.length]; say(st.txt); }
+    setPrompt(st.txt);
+  },
+  estatuas(now, P, s) {
+    const st = G.st;
+    if (!st.mode) { Object.assign(st, { mode: 'baila', until: now + rnd(5000, 8000), prev: [], mot: 0, tick: now, seenT: now }); say('¡A bailar!'); }
+    setPrompt(now - G.t0 < 6000 ? s.tip : '');
+    // movimiento: solo se mide cuando llega una lectura nueva de la cámara
+    if (poses !== st.seen) {
+      const dt = clamp((now - st.seenT) / 1000, 0.01, 0.3); st.seen = poses; st.seenT = now;
+      const curr = poses.map(p => ({ p, m: metrics(p) })).filter(o => o.m.ok);
+      let maxMot = 0;
+      for (const o of curr) {
+        let best = null, bd = Infinity;
+        for (const q of st.prev) { const d = Math.hypot(q.m.sh.x - o.m.sh.x, q.m.sh.y - o.m.sh.y); if (d < bd) { bd = d; best = q; } }
+        if (!best || bd > o.m.torso * 0.8) continue;
+        let sum = 0, n = 0;
+        for (const i of MOTION_PTS) { const a = o.p[i], b = best.p[i]; if (a.v < 0.5 || b.v < 0.5) continue; sum += Math.hypot(a.x - b.x, a.y - b.y); n++; }
+        if (n) maxMot = Math.max(maxMot, sum / n / o.m.torso / dt);
+      }
+      st.prev = curr;
+      st.mot += (maxMot - st.mot) * 0.3;
+    }
+    const left = st.until - now;
+    if (st.mode === 'baila') {
+      if (now - st.tick > 500) { st.tick = now; if (st.mot > 0.6) rep(P ? P.m.sh.x : W / 2, P ? P.m.sh.y - 60 : H * 0.4, 3); }
+      if (left <= 0) {
+        Object.assign(st, { mode: 'estatua', t0: now, until: now + rnd(3000, 5000), caught: false });
+        music.stop(); tone(200, 0.3, 'square', 0.15); say('¡Estatua!');
+      }
+    } else {
+      if (!st.caught) G.lastRep = now; // la racha aguanta mientras nadie se mueva
+      if (!st.caught && now - st.t0 > 700 && st.mot > 0.45) { st.caught = true; miss(); say('¡Te moviste!'); }
+      if (left <= 0) {
+        if (!st.caught) { rep(W / 2, H * 0.4, 25); say('¡Muy bien, estatuas!'); } else say('¡A bailar!');
+        Object.assign(st, { mode: 'baila', until: now + rnd(5000, 8000), tick: now });
+        music.start(false);
+      }
+    }
+  },
+  globo(now, P, s) {
+    const st = G.st, dt = Math.min(0.05, (now - (st.last || now)) / 1000); st.last = now;
+    if (!st.bal) {
+      Object.assign(st, { bal: [newBalloon(now)], prev: {}, best: 0 });
+      try { st.best = Number(localStorage.getItem('retoencasa.globo')) || 0; } catch (e) {}
+    }
+    setPrompt(now - G.t0 < 6000 ? s.tip : '');
+    G.lastRep = now; // aquí la racha solo se pierde si el globo toca el piso
+    // puntos del cuerpo que golpean, con su velocidad
+    const hitters = [];
+    poses.forEach((p, pi) => {
+      for (const i of [15, 16, 0]) {
+        const h = p[i]; if (h.v < 0.4) continue;
+        const key = pi + '-' + i, q = st.prev[key];
+        hitters.push({ x: h.x, y: h.y, pad: i === 0 ? 46 : 28, vx: q ? (h.x - q.x) / Math.max(dt, 0.001) : 0 });
+        st.prev[key] = { x: h.x, y: h.y };
+      }
+    });
+    let dropped = false;
+    for (const b of st.bal) {
+      b.vy = Math.min(b.vy + H * 0.55 * dt, H * 0.45);
+      b.vx *= 1 - 0.6 * dt;
+      b.x += b.vx * dt; b.y += b.vy * dt;
+      if (b.x < W * 0.1) { b.x = W * 0.1; b.vx = Math.abs(b.vx); } else if (b.x > W * 0.9) { b.x = W * 0.9; b.vx = -Math.abs(b.vx); }
+      if (b.y < 110 + b.r) { b.y = 110 + b.r; b.vy = Math.abs(b.vy) * 0.4; }
+      if (now - b.hitAt > 280 && now - b.born > 500) for (const h of hitters) {
+        const dx = b.x - h.x, dy = b.y - h.y, d = Math.hypot(dx, dy);
+        if (d > b.r + h.pad) continue;
+        b.hitAt = now;
+        b.vy = -H * rnd(0.6, 0.75);
+        b.vx = clamp((dx / (d || 1)) * W * 0.18 + h.vx * 0.4, -W * 0.35, W * 0.35);
+        rep(b.x, b.y - b.r);
+        tone(300, 0.09, 'sine', 0.16);
+        break;
+      }
+      if (b.y > H - b.r - 6) dropped = true;
+    }
+    if (dropped) {
+      miss(); st.bal = [newBalloon(now)]; st.said = 0;
+      return;
+    }
+    if (G.combo > st.best) { st.best = G.combo; try { localStorage.setItem('retoencasa.globo', String(st.best)); } catch (e) {} }
+    if ([5, 10, 20, 30, 50].includes(G.combo) && st.said !== G.combo) {
+      st.said = G.combo;
+      if (G.combo === 10 && st.bal.length === 1) { st.bal.push(newBalloon(now, W * 0.3)); say('¡Diez seguidos! ¡Llega otro globo!'); }
+      else say(`¡${G.combo} seguidos!`);
+    }
+  },
+  volante(now, P, s) {
+    const st = G.st, dt = Math.min(0.05, (now - (st.last || now)) / 1000); st.last = now;
+    const { L, R, cw, carY } = roadEdges(), ch = cw * 1.75;
+    if (st.x == null) Object.assign(st, { x: W / 2, tilt: 0, off: 0, objs: [], next: now + 1200 });
+    setPrompt(now - G.t0 < 6000 ? s.tip : '');
+    let steering = false;
+    if (P) {
+      const a = P.p[15], b = P.p[16];
+      if (a.v > 0.4 && b.v > 0.4) {
+        const lh = a.x < b.x ? a : b, rh = a.x < b.x ? b : a, dx = rh.x - lh.x;
+        if (dx > P.m.torso * 0.25) { st.tilt += (clamp(Math.atan2(rh.y - lh.y, dx), -0.9, 0.9) - st.tilt) * 0.3; steering = true; }
+      }
+    }
+    if (!steering) st.tilt *= 0.9;
+    st.x = clamp(st.x + st.tilt * W * 0.9 * dt, L + cw / 2, R - cw / 2);
+    const speed = H * (0.35 + 0.3 * Math.min(1, (now - G.t0) / 1000 / s.secs));
+    st.off = (st.off + speed * dt) % 80;
+    if (now > st.next) { st.objs.push({ x: rnd(L + 34, R - 34), y: -40, star: Math.random() < 0.45 }); st.next = now + rnd(550, 950); }
+    for (const o of st.objs) {
+      o.y += speed * dt;
+      if (!o.dead && Math.abs(o.x - st.x) < cw / 2 + 22 && Math.abs(o.y - carY) < ch / 2 + 20) {
+        o.dead = true;
+        if (o.star) { burst(o.x, o.y, C.sun, 12); rep(o.x, o.y - 30, 15); } else { burst(o.x, o.y, '#ff9f1c', 10); miss(); }
+      }
+    }
+    st.objs = st.objs.filter(o => !o.dead && o.y < H + 60);
+  },
+  lavado(now, P, s) {
+    const st = G.st, g = washGeom();
+    setPrompt(now - G.t0 < 7000 ? s.tip : '');
+    if (!st.car) st.car = newCar(now);
+    const car = st.car, t = now - car.t0;
+    // las manos se miden respecto a los hombros: alcanzan toda la pantalla aunque seas chiquito o estés lejos
+    st.hands = [];
+    for (const p of poses) {
+      const m = metrics(p); if (!m.ok) continue;
+      for (const i of [15, 16]) {
+        const h = p[i]; if (h.v < 0.4) continue;
+        st.hands.push({ x: W / 2 + clamp((h.x - m.sh.x) / (1.3 * m.torso), -1, 1) * (W / 2 - 20),
+                        y: H * 0.55 + clamp((h.y - m.sh.y) / (1.1 * m.torso), -1, 1) * (H * 0.45 - 20) });
+      }
+    }
+    if (car.phase === 'in') { if (t > 700) { car.phase = 'wash'; car.t0 = now; } return; }
+    if (car.phase === 'out') { if (t > 1600) st.car = newCar(now); return; }
+    for (const h of st.hands) for (const sp of car.spots) {
+      if (sp.dead) continue;
+      const x = W / 2 + sp.u * g.cw, y = g.cy + sp.v * g.ch;
+      if (Math.hypot(h.x - x, h.y - y) < sp.r * g.cw + 34) { sp.dead = true; burst(x, y, '#ffffff', 8); rep(x, y, 5); }
+    }
+    car.spots = car.spots.filter(sp => !sp.dead);
+    if (!car.spots.length) {
+      car.phase = 'out'; car.t0 = now; fx('horn');
+      sayParts([['¡Quedó limpio!', 'es-US'], [praise(), 'es-US']]);
+    }
+  },
   telas(now, P, s) {
     const st = G.st; st.h = st.h || {};
     setPrompt(now - G.t0 < 7000 ? s.tip : '');
@@ -650,13 +1056,13 @@ const RUN = {
   },
   saltos(now, P) {
     if (!P || !P.m.ok) return;
-    const rel = (base.hip - P.m.hip.y) / base.torso, st = G.st;
+    const rel = (base.hip - P.m.hip.y) / base.torso, st = G.st; st.noDrift = true;
     if (!st.up && rel > 0.16) { st.up = true; rep(P.m.sh.x, P.m.sh.y - 40); }
     else if (st.up && rel < 0.06) st.up = false;
   },
   sentadillas(now, P) {
     if (!P || !P.m.ok) return;
-    const rel = (P.m.hip.y - base.hip) / base.torso, st = G.st;
+    const rel = (P.m.hip.y - base.hip) / base.torso, st = G.st; st.noDrift = true;
     if (!st.down && rel > 0.28) st.down = true;
     else if (st.down && rel < 0.1) { st.down = false; rep(P.m.sh.x, P.m.sh.y - 40, 15); }
   },
@@ -691,6 +1097,7 @@ const RUN = {
 
 /* ---------- actualización ---------- */
 function update(now) {
+  if (G.paused) return;
   const P = player();
   if (P) updateBase(P.m);
   if (G.combo && now - G.lastRep > 3500) G.combo = 0;
@@ -703,34 +1110,66 @@ function update(now) {
     }
     if (!ex) G.exitT0 = 0;
     else if (!G.exitT0) G.exitT0 = now;
-    else if (now - G.exitT0 > DWELL) {
+    else if (now - G.exitT0 > EXIT_MS) {
       G.exitT0 = 0;
-      if (G.mode === 'peque' && G.phase === 'play') party(); else quit();
+      if (G.mode === 'peque' && G.phase === 'play') party();
+      else if (G.mode === 'entreno' && G.wStart && now - G.wStart - G.pausedTotal > 60000) finish();
+      else quit();
       return;
     }
   }
   switch (G.phase) {
     case 'pick': {
-      const pk = G.pick; let w = null;
-      if (P && P.m.ok) for (const h of [P.p[15], P.p[16]]) if (h.v > 0.5 && h.y < P.m.hip.y && (!w || h.y < w.y)) w = h;
-      if (!w) { pk.x = null; pk.hover = -1; break; }
-      // el brazo recorre toda la pantalla aunque estés lejos: se mide respecto a tus hombros
-      const t = P.m.torso;
-      const tx = W / 2 + clamp((w.x - P.m.sh.x) / (1.2 * t), -1, 1) * (W / 2 - 30);
-      const ty = H / 2 + clamp((w.y - (P.m.sh.y - 0.2 * t)) / t, -1, 1) * (H / 2 - 30);
-      pk.x = pk.x == null ? tx : pk.x + (tx - pk.x) * 0.35;
-      pk.y = pk.y == null ? ty : pk.y + (ty - pk.y) * 0.35;
+      const pk = G.pick;
+      if (!pk.fresh) break; // solo con una lectura nueva de la cámara
+      pk.fresh = false;
+      // 1) seguir siempre la misma mano; si no hay ninguna enganchada, tomar la que muestre la palma
+      let h = null;
+      if (pk.src) {
+        let bd = Infinity;
+        for (const q of hands) { const d = Math.hypot(q.c.x - pk.src.x, q.c.y - pk.src.y); if (d < bd) { bd = d; h = q; } }
+        if (h && bd > h.size * 3) h = null;
+      } else {
+        h = hands.find(q => q.g === 'Open_Palm') || null;
+        if (h) { pk.anchor = null; pk.acc = null; pk.seenT = now; }
+      }
+      if (!h) {
+        if (pk.src && now - pk.last > 500) Object.assign(pk, { src: null, anchor: null, x: null, y: null, hover: -1, fistT: 0, fist: false });
+        break;
+      }
+      pk.last = now; pk.src = { x: h.c.x, y: h.c.y };
+      const fist = h.g === 'Closed_Fist';
+      pk.fist = fist;
+      // 2) la palma quieta un instante fija el centro: desde ahí el cursor se mueve con la mano
+      if (!pk.anchor) {
+        if (h.g !== 'Open_Palm') { pk.acc = null; pk.seenT = now; break; }
+        pk.acc = pk.acc || { x: 0, y: 0, n: 0 };
+        pk.acc.x += h.c.x; pk.acc.y += h.c.y; pk.acc.n++;
+        if (now - pk.seenT > 300) { pk.anchor = { x: pk.acc.x / pk.acc.n, y: pk.acc.y / pk.acc.n }; pk.x = W / 2; pk.y = H / 2; pk.hover = -1; tone(660, 0.08, 'sine', 0.1); }
+        break;
+      }
+      // 3) con el puño cerrado el cursor se congela, para que no se corra al elegir
+      if (!fist) {
+        const range = h.size * 4.5;
+        const tx = W / 2 + clamp((h.c.x - pk.anchor.x) / range, -1, 1) * (W / 2 - 24);
+        const ty = H / 2 + clamp((h.c.y - pk.anchor.y) / (range * 0.75), -1, 1) * (H / 2 - 24);
+        pk.x += (tx - pk.x) * 0.4; pk.y += (ty - pk.y) * 0.4; pk.fistT = 0;
+      }
       const i = tileRects().findIndex(r => pk.x >= r.x && pk.x <= r.x + r.w && pk.y >= r.y && pk.y <= r.y + r.h);
-      if (i !== pk.hover) { pk.hover = i; pk.t0 = now; if (i >= 0) tone(520, 0.05, 'sine', 0.08); }
-      else if (i >= 0 && now - pk.t0 > DWELL) { pk.hover = -1; pk.x = null; choose(TILES[i]); return; }
+      if (i !== pk.hover) { pk.hover = i; pk.t0 = now; pk.fistT = 0; if (i >= 0) tone(520, 0.05, 'sine', 0.08); }
+      if (i >= 0) {
+        if (fist) { pk.fistT = pk.fistT || now; if (now - pk.fistT > FIST_MS) { choose(TILES[i]); return; } }
+        else if (now - pk.t0 > DWELL_MS) { choose(TILES[i]); return; }
+      }
       break;
     }
     case 'calib': {
-      const ok = !!P && P.m.ok && (G.mode !== 'rutina' || P.m.legs);
+      const needLegs = G.mode === 'rutina' || G.mode === 'entreno';
+      const ok = !!P && P.m.ok && (!needLegs || P.m.legs);
       if (ok) { if (!G.okSince) G.okSince = now; if (now - G.okSince > 900) go('count'); } else G.okSince = 0;
       setBig('');
       setPrompt(!P ? 'Párate frente a la cámara' : ok ? '¡Perfecto! Quédate ahí'
-        : G.mode === 'rutina' ? 'Aléjate hasta que se vean tus rodillas' : 'Acércate un poco para que te vea bien');
+        : needLegs ? 'Aléjate hasta que se vean tus rodillas' : 'Acércate un poco para que te vea bien');
       break;
     }
     case 'count': {
@@ -743,6 +1182,10 @@ function update(now) {
     case 'play': {
       const s = G.list[G.idx];
       RUN[s.id](now, P, s);
+      if (G.mode === 'entreno') {
+        const rem = Math.ceil(s.secs - (now - G.t0) / 1000);
+        if (rem <= 3 && rem > 0 && G.st.bp !== rem) { G.st.bp = rem; beep(700, 0.07); }
+      }
       if ((now - G.t0) / 1000 >= s.secs) endStation();
       break;
     }
@@ -755,8 +1198,9 @@ function update(now) {
     }
     case 'rest': {
       const s = G.list[G.idx];
-      setPrompt(`Respira. Sigue: ${s.name}`);
-      if (now - G.t0 > 3500) beginStation();
+      const ms = G.restMs || 3500, left = Math.max(0, Math.ceil((ms - (now - G.t0)) / 1000));
+      setPrompt(ms > 5000 ? `${G.restWater ? 'Toma agua' : 'Descansa'} ${left} s. Sigue: ${s.name}` : `Respira. Sigue: ${s.name}`);
+      if (now - G.t0 > ms) beginStation();
       break;
     }
   }
@@ -767,7 +1211,7 @@ function hud(force) {
   const s = G.list[G.idx];
   const vals = { hudName: s.name, hudTip: s.tip, hudReps: G.reps[G.idx] ?? 0, hudCombo: 'x' + G.combo, hudScore: G.score };
   for (const k in vals) if (force || hudCache[k] !== vals[k]) { $(k).textContent = vals[k]; hudCache[k] = vals[k]; }
-  const k = G.phase === 'play' ? clamp(1 - (performance.now() - G.t0) / 1000 / s.secs, 0, 1) : 1;
+  const k = G.phase === 'play' ? clamp(1 - ((G.paused || performance.now()) - G.t0) / 1000 / s.secs, 0, 1) : 1;
   $('hudTime').style.transform = `scaleX(${k})`;
 }
 
@@ -808,6 +1252,25 @@ function render(now) {
       ctx.fillStyle = C.sun; ctx.beginPath(); ctx.arc(p[i].x, p[i].y, 14, 0, Math.PI * 2); ctx.fill();
     }
   }
+
+  // carretera y lavadero
+  const cur = G.list[G.idx];
+  if (G.phase === 'play' && cur.id === 'globo' && G.st.bal) drawBalloons(now);
+  if (G.phase === 'play' && cur.id === 'estatuas' && G.st.mode) drawStatues(now);
+  if (G.phase === 'play' && cur.id === 'baile' && G.st.txt) drawDance(now);
+  if (G.phase === 'play' && cur.id === 'box' && G.st.tg) {
+    const tg = G.st.tg, k = Math.min(1, (now - tg.born) / 120);
+    for (const [f, c] of [[1, C.coral], [0.66, C.cream], [0.33, C.coral]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(tg.x, tg.y, tg.r * f * k, 0, Math.PI * 2); ctx.fill(); }
+  }
+  if (G.mode === 'entreno' && G.wStart && (G.phase === 'play' || G.phase === 'rest')) {
+    const el = ((G.paused || now) - G.wStart - G.pausedTotal) / 1000, left = Math.max(0, Math.round(G.wTotal - el));
+    const txt = `Bloque ${G.idx + 1}/${G.list.length} · faltan ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.font = '800 22px "Baloo 2", sans-serif';
+    ctx.lineWidth = 6; ctx.strokeStyle = C.night; ctx.strokeText(txt, W - 20, H - 26);
+    ctx.fillStyle = C.cream; ctx.fillText(txt, W - 20, H - 26);
+  }
+  if (G.phase === 'play' && cur.id === 'volante' && G.st.x != null) drawRoad();
+  if (G.phase === 'play' && cur.id === 'lavado' && G.st.car) drawWash(now);
 
   // telarañas
   if (G.webs.length || G.strands.length) {
@@ -927,58 +1390,201 @@ function render(now) {
 
   if (G.phase === 'pick') drawPick(now);
   else if (G.exitT0) {
-    const k = clamp((now - G.exitT0) / DWELL, 0, 1);
+    const k = clamp((now - G.exitT0) / EXIT_MS, 0, 1);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = 'rgba(11,23,48,.8)'; ctx.beginPath(); ctx.arc(W / 2, H * 0.3, 70, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = C.sun; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(W / 2, H * 0.3, 60, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke();
     ctx.fillStyle = C.cream; ctx.font = '800 22px "Baloo 2", sans-serif'; ctx.fillText('Salir', W / 2, H * 0.3);
   }
 }
-function rr(x, y, w, h, r) {
-  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
-}
 function drawPick(now) {
   const pk = G.pick, rects = tileRects();
   ctx.fillStyle = 'rgba(11,23,48,.5)'; ctx.fillRect(0, 0, W, H);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = C.cream; ctx.font = `800 ${Math.round(clamp(H * 0.06, 20, 40))}px "Baloo 2", sans-serif`;
-  ctx.fillText('Levanta una mano y déjala sobre un juego', W / 2, 34);
-  ctx.font = `600 ${Math.round(clamp(H * 0.035, 13, 20))}px "Nunito", sans-serif`;
-  ctx.fillText('Para salir de un juego: junta las manos sobre la cabeza', W / 2, H - 22);
+  ctx.fillStyle = C.cream; ctx.font = `800 ${Math.round(clamp(H * 0.055, 18, 38))}px "Baloo 2", sans-serif`;
+  ctx.fillText(!pk.src ? 'Muestra la palma abierta a la cámara' : !pk.anchor ? 'Mantén la palma quieta un momento…'
+    : 'Mueve la mano y cierra el puño para elegir', W / 2, 34);
+  ctx.font = `600 ${Math.round(clamp(H * 0.032, 12, 19))}px "Nunito", sans-serif`;
+  ctx.fillText('Baja la mano y súbela de nuevo para recentrar · Para salir de un juego: manos juntas sobre la cabeza', W / 2, H - 22);
   rects.forEach((r, i) => {
     const t = TILES[i], hot = pk.hover === i;
-    ctx.globalAlpha = hot ? 1 : 0.85; ctx.fillStyle = t.c; rr(r.x, r.y, r.w, r.h, 24); ctx.fill();
+    ctx.globalAlpha = hot ? 1 : 0.85; ctx.fillStyle = t.c; roundPath(r.x, r.y, r.w, r.h, 22); ctx.fill();
     ctx.globalAlpha = 1;
     if (hot) {
       ctx.lineWidth = 8; ctx.strokeStyle = C.night; ctx.stroke();
-      const k = clamp((now - pk.t0) / DWELL, 0, 1);
-      ctx.fillStyle = C.night; rr(r.x + 18, r.y + r.h - 28, Math.max(12, (r.w - 36) * k), 12, 6); ctx.fill();
+      const k = pk.fistT ? clamp((now - pk.fistT) / FIST_MS, 0, 1) : clamp((now - pk.t0) / DWELL_MS, 0, 1);
+      ctx.fillStyle = C.night; roundPath(r.x + 16, r.y + r.h - 24, Math.max(12, (r.w - 32) * k), 10, 5); ctx.fill();
     }
     ctx.fillStyle = C.night;
-    ctx.font = `${Math.round(Math.min(r.h * 0.42, r.w * 0.36))}px ${EMOJI_FONT}`;
+    ctx.font = `${Math.round(Math.min(r.h * 0.42, r.w * 0.34))}px ${EMOJI_FONT}`;
     ctx.fillText(t.icon, r.x + r.w / 2, r.y + r.h * 0.38);
-    ctx.font = `800 ${Math.round(clamp(r.h * 0.17, 18, 54))}px "Baloo 2", sans-serif`;
-    ctx.fillText(t.label, r.x + r.w / 2, r.y + r.h * 0.74);
+    ctx.font = `800 ${Math.round(clamp(Math.min(r.h * 0.18, r.w * 0.13), 15, 46))}px "Baloo 2", sans-serif`;
+    ctx.fillText(t.label, r.x + r.w / 2, r.y + r.h * 0.75);
   });
+  // manos detectadas (puntos) y cursor
+  for (const q of hands) { ctx.fillStyle = 'rgba(255,246,220,.55)'; ctx.beginPath(); ctx.arc(q.c.x, q.c.y, 10, 0, Math.PI * 2); ctx.fill(); }
   if (pk.x != null) {
-    ctx.fillStyle = C.cream; ctx.strokeStyle = C.night; ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.arc(pk.x, pk.y, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    if (pk.hover >= 0) {
-      const k = clamp((now - pk.t0) / DWELL, 0, 1);
-      ctx.strokeStyle = C.night; ctx.lineWidth = 7;
-      ctx.beginPath(); ctx.arc(pk.x, pk.y, 32, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke();
-    }
+    ctx.fillStyle = 'rgba(11,23,48,.85)'; ctx.beginPath(); ctx.arc(pk.x, pk.y, 40, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = pk.fist ? C.sun : C.cream; ctx.lineWidth = 5; ctx.stroke();
+    ctx.font = `46px ${EMOJI_FONT}`; ctx.fillStyle = C.cream; ctx.fillText(pk.fist ? '✊' : '✋', pk.x, pk.y + 3);
   }
 }
 
+function roundPath(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function drawDance(now) {
+  const st = G.st, size = Math.round(Math.min(W * 0.09, H * 0.16));
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `800 ${size}px "Baloo 2", sans-serif`;
+  const y = 110 + size * 0.6 + Math.sin(now / 120) * 6;
+  ctx.lineWidth = 12; ctx.strokeStyle = C.night; ctx.strokeText(st.txt, W / 2, y);
+  ctx.fillStyle = C.mint; ctx.fillText(st.txt, W / 2, y);
+  const bw = Math.min(360, W * 0.5), bx = (W - bw) / 2, by = H - 40, k = clamp((st.mot || 0) / 1.2, 0, 1);
+  ctx.fillStyle = 'rgba(11,23,48,.7)'; roundPath(bx - 6, by - 6, bw + 12, 26, 13); ctx.fill();
+  ctx.fillStyle = C.mint; roundPath(bx, by, Math.max(14, bw * k), 14, 7); ctx.fill();
+}
+function drawStatues(now) {
+  const st = G.st, frozen = st.mode === 'estatua';
+  if (frozen) {
+    ctx.fillStyle = 'rgba(76,201,240,.22)'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = st.caught ? C.coral : C.sky; ctx.lineWidth = 18; ctx.strokeRect(9, 9, W - 18, H - 18);
+  }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const size = Math.round(Math.min(W * 0.12, H * 0.2));
+  ctx.font = `800 ${size}px "Baloo 2", sans-serif`;
+  const txt = frozen ? (st.caught ? '¡Te moviste!' : '¡ESTATUA!') : '¡BAILA!';
+  const y = 110 + size * 0.6 + (frozen ? 0 : Math.sin(now / 120) * 8);
+  ctx.lineWidth = 12; ctx.strokeStyle = C.night; ctx.strokeText(txt, W / 2, y);
+  ctx.fillStyle = frozen ? (st.caught ? C.coral : C.sky) : C.mint; ctx.fillText(txt, W / 2, y);
+  // medidor de movimiento
+  const bw = Math.min(360, W * 0.5), bx = (W - bw) / 2, by = H - 40, k = clamp(st.mot / 1.2, 0, 1);
+  ctx.fillStyle = 'rgba(11,23,48,.7)'; roundPath(bx - 6, by - 6, bw + 12, 26, 13); ctx.fill();
+  ctx.fillStyle = frozen ? (st.mot > 0.45 ? C.coral : C.sky) : C.mint;
+  roundPath(bx, by, Math.max(14, bw * k), 14, 7); ctx.fill();
+  if (frozen) { ctx.fillStyle = C.cream; ctx.fillRect(bx + bw * 0.45 / 1.2, by - 4, 3, 22); }
+}
+function drawBalloons(now) {
+  const st = G.st;
+  // piso
+  ctx.fillStyle = 'rgba(255,93,115,.35)'; ctx.fillRect(0, H - 10, W, 10);
+  for (const b of st.bal) {
+    const sway = Math.sin(now / 300 + b.born) * 6;
+    ctx.strokeStyle = 'rgba(255,246,220,.8)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(b.x, b.y + b.r * 1.18);
+    ctx.quadraticCurveTo(b.x + sway, b.y + b.r * 1.7, b.x - sway, b.y + b.r * 2.3); ctx.stroke();
+    ctx.fillStyle = b.c;
+    ctx.beginPath(); ctx.moveTo(b.x, b.y + b.r * 1.08); ctx.lineTo(b.x - b.r * 0.14, b.y + b.r * 1.26); ctx.lineTo(b.x + b.r * 0.14, b.y + b.r * 1.26); ctx.closePath(); ctx.fill();
+    const squash = now - b.hitAt < 140 ? 0.9 : 1;
+    ctx.beginPath(); ctx.ellipse(b.x, b.y, b.r * 0.9 / squash, b.r * 1.1 * squash, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.5)';
+    ctx.beginPath(); ctx.ellipse(b.x - b.r * 0.32, b.y - b.r * 0.42, b.r * 0.16, b.r * 0.28, -0.5, 0, Math.PI * 2); ctx.fill();
+  }
+  if (st.best > 0) {
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = '800 24px "Baloo 2", sans-serif';
+    ctx.lineWidth = 6; ctx.strokeStyle = C.night; ctx.strokeText(`Mejor racha: ${st.best}`, 22, H - 34);
+    ctx.fillStyle = C.sun; ctx.fillText(`Mejor racha: ${st.best}`, 22, H - 34);
+  }
+}
+function drawRoad() {
+  const st = G.st, { L, R, cw, carY } = roadEdges(), ch = cw * 1.75;
+  ctx.fillStyle = 'rgba(20,24,38,.62)'; ctx.fillRect(L, 0, R - L, H);
+  ctx.strokeStyle = C.cream; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(L, 0); ctx.lineTo(L, H); ctx.moveTo(R, 0); ctx.lineTo(R, H); ctx.stroke();
+  ctx.setLineDash([40, 40]); ctx.lineDashOffset = -st.off; ctx.lineWidth = 5; ctx.globalAlpha = 0.7;
+  for (const f of [1 / 3, 2 / 3]) { const x = L + (R - L) * f; ctx.beginPath(); ctx.moveTo(x, -80); ctx.lineTo(x, H); ctx.stroke(); }
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const o of st.objs) {
+    if (o.star) { ctx.font = `44px ${EMOJI_FONT}`; ctx.fillStyle = C.night; ctx.fillText('⭐', o.x, o.y); }
+    else {
+      ctx.fillStyle = '#ff9f1c'; ctx.beginPath(); ctx.moveTo(o.x, o.y - 26); ctx.lineTo(o.x + 20, o.y + 20); ctx.lineTo(o.x - 20, o.y + 20); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = C.cream; ctx.fillRect(o.x - 11, o.y - 2, 22, 7);
+      ctx.fillStyle = '#ff9f1c'; ctx.fillRect(o.x - 26, o.y + 20, 52, 7);
+    }
+  }
+  // carro visto desde arriba
+  ctx.save(); ctx.translate(st.x, carY); ctx.rotate(st.tilt * 0.35);
+  ctx.fillStyle = '#10131f';
+  for (const [wx, wy] of [[-1, -0.3], [1, -0.3], [-1, 0.3], [1, 0.3]]) ctx.fillRect(wx * cw / 2 - cw * 0.08, wy * ch - ch * 0.1, cw * 0.16, ch * 0.2);
+  ctx.fillStyle = C.coral; roundPath(-cw / 2, -ch / 2, cw, ch, cw * 0.28); ctx.fill();
+  ctx.fillStyle = C.sky; roundPath(-cw * 0.36, -ch * 0.24, cw * 0.72, ch * 0.2, 6); ctx.fill();
+  ctx.globalAlpha = 0.8; roundPath(-cw * 0.34, ch * 0.2, cw * 0.68, ch * 0.13, 6); ctx.fill(); ctx.globalAlpha = 1;
+  ctx.fillStyle = C.sun;
+  for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(sx * cw * 0.3, -ch * 0.44, cw * 0.08, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+  // volante indicador
+  ctx.save(); ctx.translate(L / 2, H - 90); ctx.rotate(st.tilt);
+  ctx.strokeStyle = C.cream; ctx.lineWidth = 9; ctx.beginPath(); ctx.arc(0, 0, 46, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(-46, 0); ctx.lineTo(46, 0); ctx.moveTo(0, 0); ctx.lineTo(0, 46); ctx.stroke();
+  ctx.restore();
+}
+function drawWash(now) {
+  const st = G.st, car = st.car, { cw, ch, cy } = washGeom(), t = now - car.t0;
+  let ox = 0;
+  if (car.phase === 'in') { const k = Math.min(1, t / 700); ox = -W * (1 - k) * (1 - k); }
+  else if (car.phase === 'out' && t > 600) { const k = Math.min(1, (t - 600) / 900); ox = W * 1.2 * k * k; }
+  const cx = W / 2 + ox;
+  ctx.fillStyle = 'rgba(11,23,48,.35)'; ctx.beginPath(); ctx.ellipse(cx, cy + ch * 0.55, cw * 0.5, ch * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+  // cabina y ventanas
+  ctx.fillStyle = car.c; ctx.beginPath();
+  ctx.moveTo(cx - cw * 0.3, cy - ch * 0.04); ctx.lineTo(cx - cw * 0.18, cy - ch * 0.5); ctx.lineTo(cx + cw * 0.14, cy - ch * 0.5); ctx.lineTo(cx + cw * 0.3, cy - ch * 0.04);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#d7f3ff'; ctx.beginPath();
+  ctx.moveTo(cx - cw * 0.24, cy - ch * 0.08); ctx.lineTo(cx - cw * 0.15, cy - ch * 0.42); ctx.lineTo(cx - cw * 0.02, cy - ch * 0.42); ctx.lineTo(cx - cw * 0.02, cy - ch * 0.08);
+  ctx.closePath(); ctx.fill(); ctx.beginPath();
+  ctx.moveTo(cx + cw * 0.02, cy - ch * 0.08); ctx.lineTo(cx + cw * 0.02, cy - ch * 0.42); ctx.lineTo(cx + cw * 0.12, cy - ch * 0.42); ctx.lineTo(cx + cw * 0.23, cy - ch * 0.08);
+  ctx.closePath(); ctx.fill();
+  // carrocería, faro y ruedas
+  ctx.fillStyle = car.c; roundPath(cx - cw / 2, cy - ch * 0.08, cw, ch * 0.42, ch * 0.16); ctx.fill();
+  ctx.fillStyle = C.sun; ctx.beginPath(); ctx.arc(cx + cw * 0.46, cy + ch * 0.06, ch * 0.06, 0, Math.PI * 2); ctx.fill();
+  for (const sx of [-0.3, 0.3]) {
+    ctx.fillStyle = '#10131f'; ctx.beginPath(); ctx.arc(cx + cw * sx, cy + ch * 0.36, ch * 0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.cream; ctx.beginPath(); ctx.arc(cx + cw * sx, cy + ch * 0.36, ch * 0.09, 0, Math.PI * 2); ctx.fill();
+  }
+  // lodo
+  ctx.fillStyle = 'rgba(107,68,35,.94)';
+  for (const sp of car.spots) {
+    const x = cx + sp.u * cw, y = cy + sp.v * ch, r = sp.r * cw;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.arc(x + Math.cos(sp.k) * r * 0.7, y + Math.sin(sp.k) * r * 0.7, r * 0.6, 0, Math.PI * 2);
+    ctx.arc(x - Math.cos(sp.k * 2) * r * 0.6, y + Math.sin(sp.k * 2) * r * 0.5, r * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (car.phase === 'out') {
+    ctx.font = `${Math.round(ch * 0.3)}px ${EMOJI_FONT}`; ctx.fillStyle = C.night;
+    for (const [u, v] of [[-0.35, -0.3], [0.05, -0.62], [0.4, -0.2], [-0.1, 0.1]]) {
+      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(now / 90 + u * 9); ctx.fillText('✨', cx + u * cw, cy + v * ch);
+    }
+    ctx.globalAlpha = 1;
+  }
+  // esponjas
+  ctx.font = `60px ${EMOJI_FONT}`; ctx.fillStyle = C.night;
+  for (const h of st.hands || []) ctx.fillText('🧽', h.x, h.y);
+}
 function frame(now) {
   requestAnimationFrame(frame);
   if (cv.clientWidth !== W || cv.clientHeight !== H) { fit(); calcT(); }
   const live = G.phase !== 'menu' && G.phase !== 'end';
   if (live && landmarker && camReady && video.readyState >= 2 && video.currentTime !== lastVideoT) {
     lastVideoT = video.currentTime; calcT();
-    try { poses = (landmarker.detectForVideo(video, now).landmarks || []).map(p => p.map(toScreen)); } catch (e) { poses = []; }
+    if (G.phase === 'pick' && gesture) {
+      // en el menú solo corre el detector de manos
+      try {
+        const r = gesture.recognizeForVideo(video, now);
+        hands = (r.landmarks || []).map((lm, i) => {
+          const c = toScreen(lm[9]), w0 = toScreen(lm[0]);
+          return { c, size: Math.max(8, Math.hypot(c.x - w0.x, c.y - w0.y)), g: r.gestures?.[i]?.[0]?.categoryName || 'None' };
+        });
+      } catch (e) { hands = []; }
+      if (G.pick) G.pick.fresh = true;
+    } else {
+      try { poses = (landmarker.detectForVideo(video, now).landmarks || []).map(p => p.map(toScreen)); } catch (e) { poses = []; }
+    }
   }
   if (live) update(now);
   else if (G.phase === 'end' && handsFree && G.endAuto) {
@@ -998,6 +1604,10 @@ $('mPeque').addEventListener('click', () => start('peque'));
 $('mFrutas').addEventListener('click', () => start('frutas'));
 $('mTelas').addEventListener('click', () => start('telas'));
 $('mTele').addEventListener('click', enterPick);
+$('mVolante').addEventListener('click', () => start('volante'));
+$('mGlobo').addEventListener('click', () => start('globo'));
+$('mEstatuas').addEventListener('click', () => start('estatuas'));
+$('mLavado').addEventListener('click', () => start('lavado'));
 function party() {
   G.bubbles = []; G.conf = [];
   const name = G.player && G.player !== 'Jugador' ? G.player : '';
@@ -1005,8 +1615,19 @@ function party() {
   sayParts([[name ? `¡Bravo, ${name}! ¡Lo hiciste muy bien!` : '¡Bravo! ¡Lo hiciste muy bien!', 'es-US']]);
   go('party');
 }
+function togglePause() {
+  if (G.mode !== 'entreno' || (G.phase !== 'play' && G.phase !== 'rest')) return;
+  const now = performance.now();
+  if (!G.paused) { G.paused = now; music.stop(); setPrompt('En pausa'); try { speechSynthesis.cancel(); } catch (e) {} }
+  else { const d = now - G.paused; G.t0 += d; G.pausedTotal += d; G.paused = 0; setPrompt(''); music.start(false); }
+  $('btnPause').textContent = G.paused ? 'Seguir' : 'Pausa';
+}
+$('btnPause').addEventListener('click', togglePause);
+$('mEntreno').addEventListener('click', () => start('entreno'));
+$('histLine').textContent = histText(loadHist());
 $('btnQuit').addEventListener('click', () => {
-  if (G.mode === 'peque' && G.phase === 'play') party();
+  if (G.mode === 'entreno' && G.wStart && performance.now() - G.wStart - G.pausedTotal > 60000 && G.phase !== 'end') { G.paused = 0; finish(); }
+  else if (G.mode === 'peque' && G.phase === 'play') party();
   else if (G.phase !== 'party') quit();
 });
 try { $('playerName').value = localStorage.getItem('retoencasa.player') || ''; } catch (e) {}
