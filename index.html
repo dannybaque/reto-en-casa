@@ -91,6 +91,7 @@ h1 em{font-style:normal;color:var(--sun)}
 #mTelas{background:var(--cream)}
 #mVolante{background:#ff9f1c}
 #mLavado{background:#b8f2e6}
+#mGlobo{background:#c8b6ff}
 .field{display:flex;flex-direction:column;gap:6px;font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
 .field input{font:800 20px var(--font-body);padding:12px 14px;border-radius:14px;border:2px solid rgba(255,246,220,.4);
   background:var(--panel);color:var(--cream);width:min(100%,320px);text-transform:none;letter-spacing:0}
@@ -165,6 +166,11 @@ td:last-child{text-align:right;font-weight:800}
         <span class="tag">Toda la familia · sin reloj</span>
         <strong>Telarañas</strong>
         <small>Estira el brazo y lanzas una telaraña a la pantalla. Cuando esté llena, aplaude y se limpia todo.</small>
+      </button>
+      <button class="mode" id="mGlobo" type="button">
+        <span class="tag">Toda la familia · sin reloj</span>
+        <strong>Que no caiga el globo</strong>
+        <small>Golpea el globo con las manos o la cabeza para que no toque el piso. A los diez toques seguidos llega otro.</small>
       </button>
       <button class="mode" id="mVolante" type="button">
         <span class="tag">1 jugador · 60 segundos</span>
@@ -247,7 +253,8 @@ const FRUTAS = [{ id: 'frutas', name: 'Corta las frutas', tip: 'Pásales la mano
 const TELAS = [{ id: 'telas', name: 'Telarañas', tip: 'Estira el brazo para lanzar. Aplaude para limpiar', secs: Infinity, libre: true }];
 const VOLANTE = [{ id: 'volante', name: 'Maneja', tip: 'Agarra un volante imaginario y gíralo', secs: 60, libre: true }];
 const LAVADO = [{ id: 'lavado', name: 'Lavadero', tip: 'Pasa las manos para limpiar el carro', secs: Infinity, libre: true }];
-const LISTS = { rutina: RUTINA, libre: LIBRE, peque: PEQUE, frutas: FRUTAS, telas: TELAS, volante: VOLANTE, lavado: LAVADO };
+const GLOBO = [{ id: 'globo', name: 'Que no caiga el globo', tip: 'Golpéalo con las manos o la cabeza', secs: Infinity, libre: true }];
+const LISTS = { rutina: RUTINA, libre: LIBRE, peque: PEQUE, frutas: FRUTAS, telas: TELAS, volante: VOLANTE, lavado: LAVADO, globo: GLOBO };
 const CAR_COLORS = ['#ff5d73', '#ffc93c', '#3ddc97', '#4cc9f0', '#ff9f1c'];
 const FRUITS = [
   { e: '🍉', c: '#ff5d73' }, { e: '🍊', c: '#ff9f1c' }, { e: '🍎', c: '#e63946' }, { e: '🍌', c: '#ffd60a' },
@@ -553,7 +560,59 @@ function newCar(now) {
   }
   return { c: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)], phase: 'in', t0: now, spots };
 }
+function newBalloon(now, x) {
+  return { x: x ?? W / 2, y: 150, vx: rnd(-40, 40), vy: 0, r: clamp(Math.min(W, H) * 0.09, 44, 96), hitAt: 0, born: now,
+           c: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)] };
+}
 const RUN = {
+  globo(now, P, s) {
+    const st = G.st, dt = Math.min(0.05, (now - (st.last || now)) / 1000); st.last = now;
+    if (!st.bal) {
+      Object.assign(st, { bal: [newBalloon(now)], prev: {}, best: 0 });
+      try { st.best = Number(localStorage.getItem('retoencasa.globo')) || 0; } catch (e) {}
+    }
+    setPrompt(now - G.t0 < 6000 ? s.tip : '');
+    G.lastRep = now; // aquí la racha solo se pierde si el globo toca el piso
+    // puntos del cuerpo que golpean, con su velocidad
+    const hitters = [];
+    poses.forEach((p, pi) => {
+      for (const i of [15, 16, 0]) {
+        const h = p[i]; if (h.v < 0.4) continue;
+        const key = pi + '-' + i, q = st.prev[key];
+        hitters.push({ x: h.x, y: h.y, pad: i === 0 ? 46 : 28, vx: q ? (h.x - q.x) / Math.max(dt, 0.001) : 0 });
+        st.prev[key] = { x: h.x, y: h.y };
+      }
+    });
+    let dropped = false;
+    for (const b of st.bal) {
+      b.vy = Math.min(b.vy + H * 0.55 * dt, H * 0.45);
+      b.vx *= 1 - 0.6 * dt;
+      b.x += b.vx * dt; b.y += b.vy * dt;
+      if (b.x < W * 0.1) { b.x = W * 0.1; b.vx = Math.abs(b.vx); } else if (b.x > W * 0.9) { b.x = W * 0.9; b.vx = -Math.abs(b.vx); }
+      if (b.y < 110 + b.r) { b.y = 110 + b.r; b.vy = Math.abs(b.vy) * 0.4; }
+      if (now - b.hitAt > 280 && now - b.born > 500) for (const h of hitters) {
+        const dx = b.x - h.x, dy = b.y - h.y, d = Math.hypot(dx, dy);
+        if (d > b.r + h.pad) continue;
+        b.hitAt = now;
+        b.vy = -H * rnd(0.6, 0.75);
+        b.vx = clamp((dx / (d || 1)) * W * 0.18 + h.vx * 0.4, -W * 0.35, W * 0.35);
+        rep(b.x, b.y - b.r);
+        tone(300, 0.09, 'sine', 0.16);
+        break;
+      }
+      if (b.y > H - b.r - 6) dropped = true;
+    }
+    if (dropped) {
+      miss(); st.bal = [newBalloon(now)]; st.said = 0;
+      return;
+    }
+    if (G.combo > st.best) { st.best = G.combo; try { localStorage.setItem('retoencasa.globo', String(st.best)); } catch (e) {} }
+    if ([5, 10, 20, 30, 50].includes(G.combo) && st.said !== G.combo) {
+      st.said = G.combo;
+      if (G.combo === 10 && st.bal.length === 1) { st.bal.push(newBalloon(now, W * 0.3)); say('¡Diez seguidos! ¡Llega otro globo!'); }
+      else say(`¡${G.combo} seguidos!`);
+    }
+  },
   volante(now, P, s) {
     const st = G.st, dt = Math.min(0.05, (now - (st.last || now)) / 1000); st.last = now;
     const { L, R, cw, carY } = roadEdges(), ch = cw * 1.75;
@@ -809,6 +868,7 @@ function render(now) {
 
   // carretera y lavadero
   const cur = G.list[G.idx];
+  if (G.phase === 'play' && cur.id === 'globo' && G.st.bal) drawBalloons(now);
   if (G.phase === 'play' && cur.id === 'volante' && G.st.x != null) drawRoad();
   if (G.phase === 'play' && cur.id === 'lavado' && G.st.car) drawWash(now);
 
@@ -933,6 +993,29 @@ function roundPath(x, y, w, h, r) {
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
+function drawBalloons(now) {
+  const st = G.st;
+  // piso
+  ctx.fillStyle = 'rgba(255,93,115,.35)'; ctx.fillRect(0, H - 10, W, 10);
+  for (const b of st.bal) {
+    const sway = Math.sin(now / 300 + b.born) * 6;
+    ctx.strokeStyle = 'rgba(255,246,220,.8)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(b.x, b.y + b.r * 1.18);
+    ctx.quadraticCurveTo(b.x + sway, b.y + b.r * 1.7, b.x - sway, b.y + b.r * 2.3); ctx.stroke();
+    ctx.fillStyle = b.c;
+    ctx.beginPath(); ctx.moveTo(b.x, b.y + b.r * 1.08); ctx.lineTo(b.x - b.r * 0.14, b.y + b.r * 1.26); ctx.lineTo(b.x + b.r * 0.14, b.y + b.r * 1.26); ctx.closePath(); ctx.fill();
+    const squash = now - b.hitAt < 140 ? 0.9 : 1;
+    ctx.beginPath(); ctx.ellipse(b.x, b.y, b.r * 0.9 / squash, b.r * 1.1 * squash, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.5)';
+    ctx.beginPath(); ctx.ellipse(b.x - b.r * 0.32, b.y - b.r * 0.42, b.r * 0.16, b.r * 0.28, -0.5, 0, Math.PI * 2); ctx.fill();
+  }
+  if (st.best > 0) {
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = '800 24px "Baloo 2", sans-serif';
+    ctx.lineWidth = 6; ctx.strokeStyle = C.night; ctx.strokeText(`Mejor racha: ${st.best}`, 22, H - 34);
+    ctx.fillStyle = C.sun; ctx.fillText(`Mejor racha: ${st.best}`, 22, H - 34);
+  }
+}
 function drawRoad() {
   const st = G.st, { L, R, cw, carY } = roadEdges(), ch = cw * 1.75;
   ctx.fillStyle = 'rgba(20,24,38,.62)'; ctx.fillRect(L, 0, R - L, H);
@@ -1032,6 +1115,7 @@ $('mPeque').addEventListener('click', () => start('peque'));
 $('mFrutas').addEventListener('click', () => start('frutas'));
 $('mTelas').addEventListener('click', () => start('telas'));
 $('mVolante').addEventListener('click', () => start('volante'));
+$('mGlobo').addEventListener('click', () => start('globo'));
 $('mLavado').addEventListener('click', () => start('lavado'));
 function party() {
   G.bubbles = []; G.conf = [];
